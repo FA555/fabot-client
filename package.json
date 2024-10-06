@@ -1,0 +1,19 @@
+{
+  "name": "fa-bot",
+  "module": "src/main.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/pinyin": "^2.10.2",
+    "axios": "^1.7.7",
+    "hono": "^4.6.3",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2",
+    "pinyin": "^4.0.0-alpha.2"
+  }
+}
