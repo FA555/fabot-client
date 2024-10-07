@@ -4,13 +4,13 @@ import pinyin from "pinyin";
 import { HANDLE_SERVER_URL } from "../../config";
 
 
-const get_pinyin = async (word: string): Promise<string> => {
+const get_pinyin = async (word: string): Promise<[string, boolean]> => {
     const response = await axios.get(`${HANDLE_SERVER_URL}/try_get_pinyin?word=${word}`);
 
     if (response.data?.pinyin)
-        return response.data.pinyin;
+        return [response.data.pinyin, true];
 
-    return pinyin(word, { style: 2 }).flat().join(" ");
+    return [pinyin(word, { style: 2 }).flat().join(" "), false];
 }
 
 export class Answer {
@@ -25,19 +25,20 @@ export class Answer {
     }
 
     toString(): string {
-        return `答案：${this.word}\n释义：${this.explanation}`;
+        return `【答案】${this.word}\n【释义】${this.explanation}`;
     }
 }
 
 export class Attempt {
     word: string
     pinyin: string | null = null
+    verified: boolean | null = null
 
     constructor(word: string) {
         this.word = word;
     }
 
     async get_pinyin(): Promise<void> {
-        this.pinyin = await get_pinyin(this.word);
+        [this.pinyin, this.verified] = await get_pinyin(this.word);
     }
 }

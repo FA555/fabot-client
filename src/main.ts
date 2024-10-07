@@ -6,6 +6,7 @@ import type { MessageBody, TextMessageData } from "./model";
 
 import { echo } from "./components/echo";
 import handle from "./components/handle/handle";
+import { sendMessage } from "./util";
 
 const app = new Hono();
 

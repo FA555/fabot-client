@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 import { HANDLE_SERVER_URL } from '../../config';
-import { getIdentifier, type MessageBody, type MessageData, type TextMessageData } from '../../model';
+import { getIdentifier, type MessageBody, type TextMessageData } from '../../model';
 import { isChineseCharacter, sendMessage, sendReplyMessage } from '../../util';
 import { State, StateManager, botStateManager } from './state';
 import { Answer } from './model';
@@ -60,7 +60,7 @@ const start = async (body: MessageBody) => {
     await sendMessage(body, {
         type: "text",
         data: {
-            text: `游戏开始，请发送四字词语进行猜测。最多猜测 ${MAX_ATTEMPT_COUNT} 次。`,
+            text: `Handle 开始，发送四字词语猜测成语。\n最多猜测 ${MAX_ATTEMPT_COUNT} 次。`,
         }
     });
 }
