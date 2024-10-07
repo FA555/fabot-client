@@ -104,7 +104,7 @@ const app = async (body: MessageBody, data: TextMessageData) => {
 
         const word = (data.text.startsWith("/handle") ? data.text.slice(8) : data.text).trim();
 
-        if (word.length && word.length !== 4) {
+        if (!word.split('').every(isChineseCharacter) || (word.length && word.length !== 4)) {
             sendMessage(body, {
                 type: "text",
                 data: {
