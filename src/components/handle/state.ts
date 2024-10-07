@@ -1,3 +1,4 @@
+import { Mutex } from 'async-mutex';
 import { MAX_ATTEMPT_COUNT } from './config';
 import { Answer, Attempt } from './model';
 
@@ -10,6 +11,7 @@ export class StateManager {
     private _state: State = State.Idle;
     private _answer: Answer | null = null;
     private _attempts: Attempt[] = [];
+    mutex: Mutex = new Mutex();
 
     get state() {
         return this._state;
@@ -51,7 +53,7 @@ export class StateManager {
         if (this._state !== State.Running)
             return 'idle';
 
-        if (this._attempts[this._attempts.length - 1].word === this._answer?.word)
+        if (this._attempts.length && this._attempts[this._attempts.length - 1].word === this._answer?.word)
             return 'success';
 
         if (this._attempts.length >= MAX_ATTEMPT_COUNT)

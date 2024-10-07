@@ -88,41 +88,48 @@ const instantFinish = async (body: MessageBody, state: StateManager, reason: str
 }
 
 const app = async (body: MessageBody, data: TextMessageData) => {
-    const stateAll = botStateManager.getState(getIdentifier(body)).getAll();
+    const identifier = getIdentifier(body);
+    const release = await botStateManager.getState(identifier).mutex.acquire();
 
-    if (data.text.startsWith("/handle") && stateAll.state === State.Idle) {
-        start(body);
-        return;
-    }
+    try {
+        const stateAll = botStateManager.getState(identifier).getAll();
 
-    if (stateAll.state === State.Idle)
-        return;
+        if (data.text.startsWith("/handle") && stateAll.state === State.Idle) {
+            start(body);
+            return;
+        }
 
-    const word = (data.text.startsWith("/handle") ? data.text.slice(8) : data.text).trim();
+        if (stateAll.state === State.Idle)
+            return;
 
-    if (word.length && word.length !== 4) {
-        sendMessage(body, {
-            type: "text",
-            data: {
-                text: `你确定「${word}」是一个四字词语吗？`,
-            }
-        });
-        return;
-    }
+        const word = (data.text.startsWith("/handle") ? data.text.slice(8) : data.text).trim();
 
-    if (word.length === 4)
-        await attempt(body, word);
+        if (word.length && word.length !== 4) {
+            sendMessage(body, {
+                type: "text",
+                data: {
+                    text: `你确定「${word}」是一个四字词语吗？`,
+                }
+            });
+            return;
+        }
 
-    const stateCurrentAll = botStateManager.getState(getIdentifier(body));
-    switch (stateCurrentAll.shouldFinish()) {
-        case 'success':
-            await instantFinish(body, stateCurrentAll, 'success');
-            break;
-        case 'fail':
-            await instantFinish(body, stateCurrentAll, '尝试次数用尽');
-            break;
-        case 'continue':
-            await drawCurrentImage(body);
+        if (word.length === 4)
+            await attempt(body, word);
+
+        const stateCurrentAll = botStateManager.getState(identifier);
+        switch (stateCurrentAll.shouldFinish()) {
+            case 'success':
+                await instantFinish(body, stateCurrentAll, 'success');
+                break;
+            case 'fail':
+                await instantFinish(body, stateCurrentAll, '尝试次数用尽');
+                break;
+            case 'continue':
+                await drawCurrentImage(body);
+        }
+    } finally {
+        release();
     }
 }
 
