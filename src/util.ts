@@ -57,5 +57,6 @@ export const sendReplyMessage = async (body: MessageBody, message: Message | Mes
         auto_escape: autoEscape,
     });
 
+    console.log(response.data);
     return response.data.data.message_id;
 }
