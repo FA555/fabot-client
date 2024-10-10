@@ -1,5 +1,5 @@
 import axios from "axios";
-import pinyin from "pinyin";
+import pinyin, { STYLE_TONE2 } from "pinyin";
 
 import { HANDLE_SERVER_URL } from "../../config";
 
@@ -10,7 +10,10 @@ const get_pinyin = async (word: string): Promise<[string, boolean]> => {
     if (response.data?.pinyin)
         return [response.data.pinyin, true];
 
-    return [pinyin(word, { style: 2 }).flat().join(" "), false];
+    return [pinyin(word, {
+        style: STYLE_TONE2,
+        segment: true,
+    }).flat().join(" ").replace('v', 'ü'), false];
 }
 
 export class Answer {
