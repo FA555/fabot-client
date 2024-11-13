@@ -11,9 +11,9 @@ const get_pinyin = async (word: string): Promise<[string, boolean]> => {
         return [response.data.pinyin, true];
 
     return [pinyin(word, {
-        style: STYLE_TONE2,
+        style: 2,
         segment: true,
-    }).flat().join(" ").replace('v', 'ü'), false];
+    }).flat().join(" ").replaceAll('v', 'ü'), false];
 }
 
 export class Answer {
