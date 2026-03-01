@@ -222,6 +222,15 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
         }
 
         if (word.length === 4) {
+            const FORBIDDEN_CHARACTERS: { [key: string]: string } = { '嗯': 'ng', '噷': 'hm', '哼': 'hng' };
+            for (const char of word) {
+                if (FORBIDDEN_CHARACTERS[char]) {
+                    await sendMessage(body, makeTextMessage(`「${char}」的读音「${FORBIDDEN_CHARACTERS[char]}」太特殊了，换一个词吧！`));
+                    scheduleTimeout(identifier, body);
+                    return;
+                }
+            }
+
             const attemptResult = await attempt(identifier, word);
 
             if (attemptResult === 'invalid') {
