@@ -1,10 +1,7 @@
 import type { MessageBody, TextMessageData } from "../../model";
 import { make_text_message as makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
 import { isSuperAdmin } from "../../whitelist";
-
-type EchoPlugin = ((body: MessageBody, data: TextMessageData) => Promise<void>) & {
-    acceptMessage: (text: string) => boolean;
-};
+import type { Plugin } from "../../plugin";
 
 interface EchoCommand {
     reply: boolean;
@@ -13,11 +10,15 @@ interface EchoCommand {
 
 const COMMAND_PREFIX = "/echo";
 
+const acceptsCommand = (text: string): boolean => {
+    return text.trimStart().startsWith(COMMAND_PREFIX);
+}
+
 const parseCommand = (text: string): EchoCommand | null => {
     if (!text)
         return null;
 
-    if (!echo.acceptMessage(text))
+    if (!acceptsCommand(text))
         return null;
 
     let normalized = text.trimStart().slice(COMMAND_PREFIX.length).trimStart();
@@ -56,10 +57,8 @@ const echo = (async (body: MessageBody, data: TextMessageData) => {
 
     const sender = command.reply ? sendReplyMessage : sendMessage;
     await sender(body, makeTextMessage(command.payload));
-}) as EchoPlugin;
+}) as Plugin;
 
-echo.acceptMessage = (text: string): boolean => {
-    return text.trimStart().startsWith(COMMAND_PREFIX);
-}
+echo.acceptMessage = acceptsCommand;
 
 export default echo;

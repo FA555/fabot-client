@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import { HANDLE_SERVER_URL } from '../../config';
 import { getIdentifier, type MessageBody, type TextMessageData } from '../../model';
+import type { Plugin } from '../../plugin';
 import { isChineseCharacter, sendMessage, sendReplyMessage } from '../../util';
 import { State, StateManager, botStateManager } from './state';
 import { Answer } from './model';
@@ -87,7 +88,7 @@ const instantFinish = async (body: MessageBody, state: StateManager, reason: str
     state.finish();
 }
 
-const app = async (body: MessageBody, data: TextMessageData) => {
+const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
     const identifier = getIdentifier(body);
     const release = await botStateManager.getState(identifier).mutex.acquire();
 
@@ -131,11 +132,11 @@ const app = async (body: MessageBody, data: TextMessageData) => {
     } finally {
         release();
     }
-}
+}) as Plugin;
 
-app.acceptMessage = (text: string): boolean => {
+handlePlugin.acceptMessage = (text: string): boolean => {
     return text === "/handle" || text.startsWith("/handle ")
         || (text.length === 4 && text.split('').every(isChineseCharacter));
 }
 
-export default app;
+export default handlePlugin;

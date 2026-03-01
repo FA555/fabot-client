@@ -4,9 +4,12 @@ import { Hono } from "hono";
 import logger from "./log";
 import { isInWhiteList } from "./whitelist";
 import type { MessageBody, TextMessageData } from "./model";
+import type { Plugin } from "./plugin";
 
 import echo from "./components/echo/echo";
 import handle from "./components/handle/handle";
+
+const plugins: Plugin[] = [echo, handle];
 
 axios.interceptors.request.use(config => {
     config.headers = config.headers ?? {};
@@ -34,9 +37,9 @@ app.post("/", async c => {
             switch (message.type) {
                 case "text":
                     let data = message.data as TextMessageData;
-                    for (let plugin of [echo, handle]) {
+                    for (const plugin of plugins) {
                         if (plugin.acceptMessage(data.text)) {
-                            plugin(body, data);
+                            await plugin(body, data);
                         }
                     }
                     break;
