@@ -7,10 +7,13 @@ export enum State {
     Running = 'Running',
 }
 
+export type AttemptOutcome = 'idle' | 'invalid' | 'recorded';
+
 export class StateManager {
     private _state: State = State.Idle;
     private _answer: Answer | null = null;
     private _attempts: Attempt[] = [];
+    private _strict: boolean = false;
     mutex: Mutex = new Mutex();
 
     get state() {
@@ -25,28 +28,39 @@ export class StateManager {
         return this._attempts;
     }
 
+    get strict() {
+        return this._strict;
+    }
+
     getAll() {
         return {
             state: this._state,
             answer: this._answer,
             attempts: this._attempts,
+            strict: this._strict,
         }
     }
 
-    start(answer: Answer) {
+    start(answer: Answer, options?: { strict?: boolean }) {
         this._state = State.Running;
         this._answer = answer;
+        this._strict = !!options?.strict;
+        this._attempts = [];
     }
 
-    async attempt(word: string): Promise<void> {
+    async attempt(word: string): Promise<AttemptOutcome> {
         // 不在游戏中，当作无事发生
         if (this._state !== State.Running)
-            return;
+            return 'idle';
 
         const attempt = new Attempt(word);
         await attempt.get_pinyin();
 
+        if (this._strict && !attempt.verified)
+            return 'invalid';
+
         this._attempts.push(attempt);
+        return 'recorded';
     }
 
     shouldFinish(): 'idle' | 'success' | 'fail' | 'continue' {
@@ -66,6 +80,7 @@ export class StateManager {
         this._state = State.Idle;
         this._answer = null;
         this._attempts = [];
+        this._strict = false;
     }
 }
 
@@ -79,12 +94,12 @@ class BotStateManager {
         return this.states.get(identifier) as StateManager;
     }
 
-    start(identifier: string, answer: Answer) {
-        this.getState(identifier).start(answer);
+    start(identifier: string, answer: Answer, options?: { strict?: boolean }) {
+        this.getState(identifier).start(answer, options);
     }
 
-    async attempt(identifier: string, word: string) {
-        await this.getState(identifier).attempt(word);
+    async attempt(identifier: string, word: string): Promise<AttemptOutcome> {
+        return this.getState(identifier).attempt(word);
     }
 
     shouldFinish(identifier: string): 'idle' | 'success' | 'fail' | 'continue' {
