@@ -4,15 +4,23 @@ interface WhitelistItem {
     description: string,
     type: string,
     number: number,
+    superAdmin?: boolean,
 }
 
 const whitelist = JSON.parse(fs.readFileSync("config/whitelist.json", "utf8")) as WhitelistItem[];
 
 export const isInWhiteList = (type: string, number: number | undefined): string | null => {
-    
+
     for (let item of whitelist)
         if (item.type === type && item.number === number)
             return item.description;
 
     return null;
+}
+
+export const isSuperAdmin = (number: number | undefined): boolean => {
+    if (typeof number !== "number")
+        return false;
+
+    return whitelist.some(item => item.superAdmin && item.number === number);
 }

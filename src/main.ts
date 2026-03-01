@@ -5,26 +5,24 @@ import logger from "./log";
 import { isInWhiteList } from "./whitelist";
 import type { MessageBody, TextMessageData } from "./model";
 
-import { echo } from "./components/echo";
+import echo from "./components/echo/echo";
 import handle from "./components/handle/handle";
 
 axios.interceptors.request.use(config => {
     config.headers = config.headers ?? {};
-    config.headers.Authorization = "Bearer F37EGWNvUXRTWazb";
+    config.headers.Authorization = `Bearer ${process.env.NAPCAT_TOKEN}`;
     return config;
 });
 
 const app = new Hono();
-console.log("Starting server...");
+console.log(`Starting server with NAPCAT_TOKEN: ${process.env.NAPCAT_TOKEN}`);
 
 app.post("/", async c => {
     const body = await c.req.json() as MessageBody;
 
     if (body.meta_event_type == "heartbeat") {
         logger.info("Heartbeat");
-        return c.json({
-            msg: "ok"
-        });
+        return c.json({ msg: "ok" });
     }
 
     let name = isInWhiteList(body.message_type, body.group_id || body.user_id);
@@ -36,17 +34,11 @@ app.post("/", async c => {
             switch (message.type) {
                 case "text":
                     let data = message.data as TextMessageData;
-
-                    if (data.text.startsWith("/echo ")) {
-                        echo(body, data);
-                        break;
+                    for (let plugin of [echo, handle]) {
+                        if (plugin.acceptMessage(data.text)) {
+                            plugin(body, data);
+                        }
                     }
-
-                    if (handle.acceptMessage(data.text)) {
-                        handle(body, data);
-                        break;
-                    }
-
                     break;
                 default:
                     break;
@@ -54,9 +46,7 @@ app.post("/", async c => {
         }
     }
 
-    return c.json({
-        msg: "ok",
-    });
+    return c.json({ msg: "ok" });
 })
 
 app.get("/ping", c => {
