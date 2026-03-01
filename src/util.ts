@@ -26,25 +26,25 @@ export const isChineseCharacter = (char: string): boolean => {
 // }
 
 export const sendMessage = async (body: MessageBody, message: Message | Message[], autoEscape: boolean = false): Promise<number> => {
-    console.log(message);
-
-    let response = await axios.post(`${SERVER_URL}/send_msg`, {
+    let msg = {
         message_type: body.message_type,
-        user_id: body.user_id,
-        group_id: body.group_id,
+        user_id: body.user_id?.toString(),
+        group_id: body.group_id?.toString(),
         message: message,
         auto_escape: autoEscape,
-    });
+    };
 
+    // console.log("sendMessage: " + JSON.stringify(msg));
+    let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
     console.log(response.data);
     return response.data.data.message_id;
 }
 
 export const sendReplyMessage = async (body: MessageBody, message: Message | Message[], autoEscape: boolean = false): Promise<number> => {
-    let response = await axios.post(`${SERVER_URL}/send_msg`, {
+    let msg = {
         message_type: body.message_type,
-        user_id: body.user_id,
-        group_id: body.group_id,
+        user_id: body.user_id?.toString(),
+        group_id: body.group_id?.toString(),
         message: [
             {
                 type: "reply",
@@ -55,8 +55,10 @@ export const sendReplyMessage = async (body: MessageBody, message: Message | Mes
             ...(Array.isArray(message) ? message : [message]),
         ],
         auto_escape: autoEscape,
-    });
+    };
 
+    // console.log("sendReplyMessage: " + JSON.stringify(msg));
+    let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
     console.log(response.data);
     return response.data.data.message_id;
 }

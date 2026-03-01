@@ -1,3 +1,4 @@
+import axios from "axios";
 import { Hono } from "hono";
 
 import logger from "./log";
@@ -6,9 +7,15 @@ import type { MessageBody, TextMessageData } from "./model";
 
 import { echo } from "./components/echo";
 import handle from "./components/handle/handle";
-import { sendMessage } from "./util";
+
+axios.interceptors.request.use(config => {
+    config.headers = config.headers ?? {};
+    config.headers.Authorization = "Bearer F37EGWNvUXRTWazb";
+    return config;
+});
 
 const app = new Hono();
+console.log("Starting server...");
 
 app.post("/", async c => {
     const body = await c.req.json() as MessageBody;
@@ -22,8 +29,8 @@ app.post("/", async c => {
 
     let name = isInWhiteList(body.message_type, body.group_id || body.user_id);
     if (name) {
-        // logger.info(name);
-        // logger.info(body.message);
+        logger.info(name);
+        logger.info(body.message);
         if (body.message && body.message.length === 1) {
             let message = body.message[0];
             switch (message.type) {
