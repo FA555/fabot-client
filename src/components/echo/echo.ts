@@ -1,5 +1,5 @@
 import type { MessageBody, TextMessageData } from "../../model";
-import { make_text_message as makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
+import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
 import { isSuperAdmin } from "../../whitelist";
 import type { Plugin } from "../../plugin";
 

@@ -7,7 +7,7 @@ export const isChineseCharacter = (char: string): boolean => {
     return char >= '\u4e00' && char <= '\u9fa5';
 }
 
-export const make_text_message = (text: string): Message => {
+export const makeTextMessage = (text: string): Message => {
     return { type: "text", data: { text } };
 }
 
