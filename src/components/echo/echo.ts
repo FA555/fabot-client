@@ -46,14 +46,17 @@ const parseCommand = (text: string): EchoCommand | null => {
 }
 
 const echo = (async (body: MessageBody, data: TextMessageData) => {
-    if (!isSuperAdmin(body.user_id)) {
-        await sendMessage(body, makeTextMessage("不听你的 嘻嘻"));
-        return;
-    }
-
     const command = parseCommand(data.text);
     if (!command)
         return;
+
+    if (!isSuperAdmin(body.user_id)) {
+        let msg = "不听你的 嘻嘻";
+        if (command.payload == msg)
+            msg = "不听你的 嘿嘿";
+        await sendMessage(body, makeTextMessage(msg));
+        return;
+    }
 
     const sender = command.reply ? sendReplyMessage : sendMessage;
     await sender(body, makeTextMessage(command.payload));
