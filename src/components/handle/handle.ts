@@ -8,7 +8,7 @@ import { State, StateManager, botStateManager } from './state';
 import type { AttemptOutcome } from './state';
 import { Answer, getEffectiveExplanation } from './model';
 import logger from '../../log';
-import { MAX_ATTEMPT_COUNT, HANDLE_TIMEOUT_MS } from './config';
+import { MAX_ATTEMPT_COUNT, HANDLE_TIMEOUT_MS, HINT_AVAILABLE_ATTEMPT_COUNT } from './config';
 
 const timeoutHandles = new Map<string, ReturnType<typeof setTimeout>>();
 const HANDLE_COMMAND_PREFIX = "/handle";
@@ -89,7 +89,7 @@ const sendHelpMessage = async (body: MessageBody) => {
         { short: ".s", long: ".strict", description: "严格模式，只能猜测成语" },
         { short: ".r", long: ".roll", description: "（开局时）随机给出一个成语避免选择困难" },
         { short: ".h", long: ".help", description: "显示此帮助信息" },
-        { long: ".hint", description: "（游戏中）提示成语释义" },
+        { long: ".hint", description: `提示成语释义，只能在 ${HINT_AVAILABLE_ATTEMPT_COUNT} 次猜测后使用` },
     ];
     const getOptionLength = (o: Option) => (o.short ? o.short.length + 2 : 0) + o.long.length;
     const longestOptionLength = options.reduce((max, o) => Math.max(max, getOptionLength(o)), 0);
@@ -243,8 +243,14 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
                 await sendMessage(body, makeTextMessage("没有正在进行的游戏。"));
                 return;
             }
+
+            if (stateAll.attempts.length < HINT_AVAILABLE_ATTEMPT_COUNT) {
+                await sendMessage(body, makeTextMessage(`提示功能太 imba 了，只能在 ${HINT_AVAILABLE_ATTEMPT_COUNT} 次猜测后使用哦！`));
+                return;
+            }
+
             const effectiveExplanation = getEffectiveExplanation(stateAll.answer!);
-            await sendMessage(body, makeTextMessage(`提示：${effectiveExplanation}`));
+            await sendMessage(body, makeTextMessage(`成语释义：${effectiveExplanation}`));
             return;
         }
 
