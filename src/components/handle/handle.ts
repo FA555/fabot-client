@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 import { HANDLE_SERVER_URL } from '../../config';
-import { getIdentifier, type MessageBody, type TextMessageData } from '../../model';
+import { getIdentifier, type Message, type MessageBody, type TextMessageData } from '../../model';
 import type { Plugin } from '../../plugin';
 import { isChineseCharacter, makeTextMessage, sendMessage, sendReplyMessage } from '../../util';
 import { State, StateManager, botStateManager } from './state';
@@ -16,7 +16,7 @@ const HANDLE_COMMAND_PREFIX = "/handle";
 interface HandleInvocation {
     strict: boolean;
     help: boolean;
-    roll: boolean;
+    roll: boolean
     payload: string;
 }
 
@@ -86,7 +86,7 @@ const getRandomAnswer = async (): Promise<Answer> => {
     return new Answer(response.data.word, response.data.pinyin, response.data.explanation);
 }
 
-const getCurrentImage = async (body: MessageBody, finished: boolean = false): Promise<string | null | undefined> => {
+const getCurrentImageMessage = async (body: MessageBody, finished: boolean = false): Promise<Message | null | undefined> => {
     const current = botStateManager.getState(getIdentifier(body)).getAll();
 
     if (current.state === State.Idle)
@@ -106,17 +106,17 @@ const getCurrentImage = async (body: MessageBody, finished: boolean = false): Pr
         return undefined;
     }
 
-    return response.data.image_base64;
+    return {
+        type: "image",
+        data: { file: `base64://${response.data.image_base64}` },
+    };
 }
 
 const drawCurrentImage = async (body: MessageBody) => {
-    const image_base64 = await getCurrentImage(body);
-    if (!image_base64)
+    const imgMsg = await getCurrentImageMessage(body);
+    if (!imgMsg)
         return;
-    await sendReplyMessage(body, {
-        type: "image",
-        data: { file: `base64://${image_base64}` },
-    });
+    await sendReplyMessage(body, imgMsg);
 }
 
 const start = async (identifier: string, body: MessageBody, options?: { strict?: boolean, roll?: boolean }) => {
@@ -147,9 +147,9 @@ const start = async (identifier: string, body: MessageBody, options?: { strict?:
     )];
     if (initial) {
         msg.push(makeTextMessage(`\n开局成语：${initial.word}`));
-        const image_base64 = await getCurrentImage(body);
-        if (image_base64)
-            msg.push({ type: "image", data: { file: `base64://${image_base64}` } });
+        const imgMsg = await getCurrentImageMessage(body);
+        if (imgMsg)
+            msg.push(imgMsg);
     }
     await sendMessage(body, msg);
 }
@@ -166,13 +166,9 @@ const instantFinish = async (identifier: string, body: MessageBody, state: State
         : `失败：${reason}。\n${state.answer?.toString()}`
     )];
 
-    const image_base64 = await getCurrentImage(body, true);
-    if (image_base64) {
-        msg.push({
-            type: "image",
-            data: { file: `base64://${image_base64}` },
-        });
-    }
+    const imgMsg = await getCurrentImageMessage(body, true);
+    if (imgMsg)
+        msg.push(imgMsg);
 
     const sender = reason === '时间结束' ? sendMessage : sendReplyMessage;
     await sender(body, msg);
