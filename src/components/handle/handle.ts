@@ -174,7 +174,8 @@ const instantFinish = async (identifier: string, body: MessageBody, state: State
         });
     }
 
-    await sendReplyMessage(body, msg);
+    const sender = reason === '时间结束' ? sendMessage : sendReplyMessage;
+    await sender(body, msg);
     state.finish();
 }
 
@@ -222,7 +223,7 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
         }
 
         if (word.length === 4) {
-            const FORBIDDEN_CHARACTERS: { [key: string]: string } = { '嗯': 'ng', '噷': 'hm', '哼': 'hng' };
+            const FORBIDDEN_CHARACTERS: { [key: string]: string } = { '嗯': 'ng', '噷': 'hm' };
             for (const char of word) {
                 if (FORBIDDEN_CHARACTERS[char]) {
                     await sendMessage(body, makeTextMessage(`「${char}」的读音「${FORBIDDEN_CHARACTERS[char]}」太特殊了，换一个词吧！`));
