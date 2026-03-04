@@ -83,11 +83,24 @@ const parseHandleInvocation = (text: string): HandleInvocation | null => {
 };
 
 const sendHelpMessage = async (body: MessageBody) => {
+    type Option = { short?: string, long: string, description: string };
+
+    const options: Option[] = [
+        { short: ".s", long: ".strict", description: "严格模式，只能猜测成语" },
+        { short: ".r", long: ".roll", description: "（开局时）随机给出一个成语避免选择困难" },
+        { short: ".h", long: ".help", description: "显示此帮助信息" },
+        { long: ".hint", description: "（游戏中）提示成语释义" },
+    ];
+    const getOptionLength = (o: Option) => (o.short ? o.short.length + 2 : 0) + o.long.length;
+    const longestOptionLength = options.reduce((max, o) => Math.max(max, getOptionLength(o)), 0);
+
     await sendMessage(body, makeTextMessage(
-        "Handle 是一个类似 Wordle 的猜成语游戏，最早由 https://github.com/antfu/handle 制作。\n\n"
-        + "本 Handle Bot 的成语库来自 https://github.com/pwxcoo/chinese-xinhua，答案库为成语库和清华大学 https://github.com/thunlp/THUOCL 的交集的词频前 4000 名。\n\n"
-        + "发送 /handle 即可开始游戏，选项 .strict 开启严格模式（只能猜测成语库中的成语），选项 .roll 随机带一个开局成语避免选择困难，选项 .hint 提供提示。\n\n"
-        + "玩得开心！"
+        "Handle 是一个类似 Wordle 的猜成语游戏，最早由 https://github.com/antfu/handle 制作。"
+        + "\n本 Handle Bot 的成语库来自 https://github.com/pwxcoo/chinese-xinhua，答案库为成语库和清华大学 https://github.com/thunlp/THUOCL 的交集的词频前 4000 名。"
+        + `\n\n用法：${HANDLE_COMMAND_PREFIX} [..选项] [猜测词语]`
+        + `\n选项：`
+        + options.map(o => `\n\t${o.short ? `${o.short}, ` : ''}${o.long}${' '.repeat(longestOptionLength - getOptionLength(o))} ${o.description}`).join('')
+        + "\n\n玩得开心！"
     ));
 };
 
