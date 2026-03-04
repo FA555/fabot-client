@@ -20,6 +20,10 @@ interface HandleInvocation {
     payload: string;
 }
 
+const isInValidFormat = (word: string): boolean => {
+    return word.length === 4 && word.split('').every(isChineseCharacter);
+}
+
 const clearTimeoutFor = (identifier: string) => {
     const timeout = timeoutHandles.get(identifier);
     if (!timeout)
@@ -29,7 +33,8 @@ const clearTimeoutFor = (identifier: string) => {
     timeoutHandles.delete(identifier);
 };
 
-const scheduleTimeout = (identifier: string, body: MessageBody) => {
+const updateTimeout = (body: MessageBody) => {
+    const identifier = getIdentifier(body);
     clearTimeoutFor(identifier);
     const timeout = setTimeout(() => {
         void finishByTimeout(identifier, body);
@@ -119,10 +124,22 @@ const drawCurrentImage = async (body: MessageBody) => {
     await sendReplyMessage(body, imgMsg);
 }
 
-const start = async (identifier: string, body: MessageBody, options?: { strict?: boolean, roll?: boolean }) => {
+const drawCurrentImageWithText = async (body: MessageBody, msg: Message) => {
+    const msgArray = [msg];
+    const imgMsg = await getCurrentImageMessage(body);
+    if (!imgMsg)
+        return;
+
+    msgArray.push(imgMsg);
+    await sendReplyMessage(body, msgArray);
+}
+
+const start = async (body: MessageBody, options?: { strict?: boolean, roll?: boolean }) => {
+    const identifier = getIdentifier(body);
+
     if (botStateManager.getState(identifier).state !== State.Idle) {
         await drawCurrentImage(body);
-        scheduleTimeout(identifier, body);
+        updateTimeout(body);
         return;
     }
 
@@ -138,7 +155,7 @@ const start = async (identifier: string, body: MessageBody, options?: { strict?:
         await botStateManager.attempt(identifier, initial.word);
     }
 
-    scheduleTimeout(identifier, body);
+    updateTimeout(body);
     logger.info(`[${identifier}] 开始 Handle${strict ? '（严格模式）' : ''}。答案：${answer}`);
 
     let msg = [makeTextMessage(
@@ -154,11 +171,13 @@ const start = async (identifier: string, body: MessageBody, options?: { strict?:
     await sendMessage(body, msg);
 }
 
-const attempt = async (identifier: string, word: string): Promise<AttemptOutcome> => {
+const attempt = async (body: MessageBody, word: string): Promise<AttemptOutcome> => {
+    const identifier = getIdentifier(body);
     return botStateManager.attempt(identifier, word);
 }
 
-const instantFinish = async (identifier: string, body: MessageBody, state: StateManager, reason: string) => {
+const finish = async (body: MessageBody, state: StateManager, reason: string) => {
+    const identifier = getIdentifier(body);
     clearTimeoutFor(identifier);
 
     const msg = [makeTextMessage(reason === 'success'
@@ -184,7 +203,7 @@ const finishByTimeout = async (identifier: string, body: MessageBody) => {
         if (state.state !== State.Running)
             return;
 
-        await instantFinish(identifier, body, state, '时间结束');
+        await finish(body, state, '时间结束');
     } finally {
         release();
     }
@@ -200,53 +219,46 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
 
         if (invocation?.help) {
             await sendHelpMessage(body);
-            if (stateAll.state === State.Running)
-                scheduleTimeout(identifier, body);
             return;
         }
 
         if (stateAll.state === State.Idle) {
             if (invocation)
-                await start(identifier, body, { strict: invocation.strict, roll: invocation.roll });
+                await start(body, { strict: invocation.strict, roll: invocation.roll });
             return;
         }
+        updateTimeout(body);
 
         const word = (invocation ? invocation.payload : data.text).trim();
-        if ((word.length && word.length !== 4) || !word.split('').every(isChineseCharacter)) {
-            await sendMessage(body, makeTextMessage(`你确定「${word}」是一个四字${stateAll.strict ? '成' : '词'}语吗？`));
-            scheduleTimeout(identifier, body);
-            return;
-        }
+        if (word.length) {
+            if (!isInValidFormat(word)) {
+                await sendMessage(body, makeTextMessage(`你确定「${word}」是一个四字${stateAll.strict ? '成' : '词'}语吗？`));
+                return;
+            }
 
-        if (word.length === 4) {
             const FORBIDDEN_CHARACTERS: { [key: string]: string } = { '嗯': 'ng', '噷': 'hm' };
             for (const char of word) {
                 if (FORBIDDEN_CHARACTERS[char]) {
                     await sendMessage(body, makeTextMessage(`「${char}」的读音「${FORBIDDEN_CHARACTERS[char]}」太特殊了，换一个词吧！`));
-                    scheduleTimeout(identifier, body);
                     return;
                 }
             }
 
-            const attemptResult = await attempt(identifier, word);
+            const attemptResult = await attempt(body, word);
 
             if (attemptResult === 'invalid') {
                 await sendMessage(body, makeTextMessage(`严格模式只能猜测成语。你确定「${word}」是个成语吗？`));
-                scheduleTimeout(identifier, body);
                 return;
             }
-
-            if (attemptResult === 'recorded')
-                scheduleTimeout(identifier, body);
         }
 
-        const stateCurrentAll = botStateManager.getState(identifier);
-        switch (stateCurrentAll.shouldFinish()) {
+        const state = botStateManager.getState(identifier);
+        switch (state.shouldFinish()) {
             case 'success':
-                await instantFinish(identifier, body, stateCurrentAll, 'success');
+                await finish(body, state, 'success');
                 break;
             case 'fail':
-                await instantFinish(identifier, body, stateCurrentAll, '尝试次数用尽');
+                await finish(body, state, '尝试次数用尽');
                 break;
             case 'continue':
                 await drawCurrentImage(body);
@@ -257,8 +269,7 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
 }) as Plugin;
 
 handlePlugin.acceptMessage = (text: string): boolean => {
-    return text.trimStart().startsWith(HANDLE_COMMAND_PREFIX)
-        || (text.length === 4 && text.split('').every(isChineseCharacter));
+    return text.trimStart().startsWith(HANDLE_COMMAND_PREFIX) || isInValidFormat(text.trim());
 }
 
 export default handlePlugin;
