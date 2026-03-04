@@ -225,7 +225,8 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
         if (stateAll.state === State.Idle) {
             if (invocation)
                 await start(body, { strict: invocation.strict, roll: invocation.roll });
-            return;
+            else
+                return;
         }
         updateTimeout(body);
 
