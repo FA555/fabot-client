@@ -6,7 +6,7 @@ import type { Plugin } from '../../plugin';
 import { isChineseCharacter, makeTextMessage, sendMessage, sendReplyMessage } from '../../util';
 import { State, StateManager, botStateManager } from './state';
 import type { AttemptOutcome } from './state';
-import { Answer } from './model';
+import { Answer, getEffectiveExplanation } from './model';
 import logger from '../../log';
 import { MAX_ATTEMPT_COUNT, HANDLE_TIMEOUT_MS } from './config';
 
@@ -16,6 +16,7 @@ const HANDLE_COMMAND_PREFIX = "/handle";
 interface HandleInvocation {
     strict: boolean;
     help: boolean;
+    hint: boolean;
     roll: boolean
     payload: string;
 }
@@ -51,6 +52,7 @@ const parseHandleInvocation = (text: string): HandleInvocation | null => {
     const invocation: HandleInvocation = {
         strict: false,
         help: false,
+        hint: false,
         roll: false,
         payload: remainder,
     };
@@ -67,6 +69,8 @@ const parseHandleInvocation = (text: string): HandleInvocation | null => {
             invocation.help = true;
         } else if (flag === '.r' || flag === '.roll') {
             invocation.roll = true;
+        } else if (flag === '.hint') {
+            invocation.hint = true;
         } else {
             break;
         }
@@ -81,7 +85,7 @@ const sendHelpMessage = async (body: MessageBody) => {
     await sendMessage(body, makeTextMessage(
         "Handle 是一个类似 Wordle 的猜成语游戏，最早由 https://github.com/antfu/handle 制作。\n\n"
         + "本 Handle Bot 的成语库来自 https://github.com/pwxcoo/chinese-xinhua，答案库为成语库和清华大学 https://github.com/thunlp/THUOCL 的交集的词频前 4000 名。\n\n"
-        + "发送 /handle 即可开始游戏，选项 .strict 开启严格模式（只能猜测成语库中的成语），选项 .roll 随机带一个开局成语避免选择困难。\n\n"
+        + "发送 /handle 即可开始游戏，选项 .strict 开启严格模式（只能猜测成语库中的成语），选项 .roll 随机带一个开局成语避免选择困难，选项 .hint 提供提示。\n\n"
         + "玩得开心！"
     ));
 };
@@ -219,6 +223,16 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
 
         if (invocation?.help) {
             await sendHelpMessage(body);
+            return;
+        }
+
+        if (invocation?.hint) {
+            if (stateAll.state !== State.Running) {
+                await sendMessage(body, makeTextMessage("没有正在进行的游戏。"));
+                return;
+            }
+            const effectiveExplanation = getEffectiveExplanation(stateAll.answer!);
+            await sendMessage(body, makeTextMessage(`提示：${effectiveExplanation}`));
             return;
         }
 

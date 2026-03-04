@@ -16,6 +16,18 @@ const get_pinyin = async (word: string): Promise<[string, boolean]> => {
     }).flat().join(" ").replaceAll('v', 'ü'), false];
 }
 
+export const getEffectiveExplanation = (answer: Answer): string => {
+    let sentences = answer.explanation.split("。");
+    if (sentences.at(-1) === "")
+        sentences.pop();
+
+    let index = -1;
+    let explanation = [sentences.at(index--) || ""];
+    while (explanation.at(-1)?.match(/^[②-⑳]/))
+        explanation.push(sentences.at(index--) || "");
+    return explanation.reverse().join("。") + "。";
+}
+
 export class Answer {
     word: string
     pinyin: string
