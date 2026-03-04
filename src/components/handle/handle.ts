@@ -54,7 +54,7 @@ const parseHandleInvocation = (text: string): HandleInvocation | null => {
         help: false,
         hint: false,
         roll: false,
-        payload: remainder,
+        payload: '',
     };
 
     while (remainder.startsWith('.')) {
@@ -78,6 +78,7 @@ const parseHandleInvocation = (text: string): HandleInvocation | null => {
         remainder = remainder.slice(match[0].length).trimStart();
     }
 
+    invocation.payload = remainder;
     return invocation;
 };
 
@@ -143,7 +144,6 @@ const start = async (body: MessageBody, options?: { strict?: boolean, roll?: boo
 
     if (botStateManager.getState(identifier).state !== State.Idle) {
         await drawCurrentImage(body);
-        updateTimeout(body);
         return;
     }
 
@@ -159,7 +159,6 @@ const start = async (body: MessageBody, options?: { strict?: boolean, roll?: boo
         await botStateManager.attempt(identifier, initial.word);
     }
 
-    updateTimeout(body);
     logger.info(`[${identifier}] 开始 Handle${strict ? '（严格模式）' : ''}。答案：${answer}`);
 
     let msg = [makeTextMessage(
@@ -236,15 +235,16 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
             return;
         }
 
+        const word = (invocation ? invocation.payload : data.text).trim();
+        updateTimeout(body);
+
         if (stateAll.state === State.Idle) {
             if (invocation)
                 await start(body, { strict: invocation.strict, roll: invocation.roll });
-            else
+            if (!isInValidFormat(word))
                 return;
         }
-        updateTimeout(body);
 
-        const word = (invocation ? invocation.payload : data.text).trim();
         if (word.length) {
             if (!isInValidFormat(word)) {
                 await sendMessage(body, makeTextMessage(`你确定「${word}」是一个四字${stateAll.strict ? '成' : '词'}语吗？`));
