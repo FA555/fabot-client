@@ -30,8 +30,8 @@ app.post("/", async c => {
 
     let name = isInWhiteList(body.message_type, body.group_id || body.user_id);
     if (name) {
-        logger.info(name);
-        logger.info(body.message);
+        // logger.info(name);
+        // logger.info(body.message);
         if (body.message && body.message.length === 1) {
             let message = body.message[0];
             switch (message.type) {
