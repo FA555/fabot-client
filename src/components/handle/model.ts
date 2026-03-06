@@ -1,5 +1,5 @@
 import axios from "axios";
-import pinyin, { STYLE_TONE2 } from "pinyin";
+import pinyin from "pinyin";
 
 import { HANDLE_SERVER_URL } from "../../config";
 

@@ -69,7 +69,7 @@ export const byrbbs = (async (body: MessageBody, data: TextMessageData) => {
 
             sendMessage(body, makeTextMessage(`【${title}】– ${posterName} @ ${time}（北邮人论坛）\n\n${rawText}`));
         } catch (error) {
-            logger.error(`Error fetching data from ${apiUrl}:`, error);
+            logger.error(`Error fetching data from ${apiUrl}: ${error}`);
             sendMessage(body, makeTextMessage(`无法获取帖子内容，可能是链接无效或帖子已被删除。`));
         }
     }
