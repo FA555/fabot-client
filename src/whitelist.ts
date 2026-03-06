@@ -1,26 +1,36 @@
 import fs from "fs";
 
-interface WhitelistItem {
-    description: string,
-    type: string,
-    number: number,
-    superAdmin?: boolean,
+interface WhitelistPrivateItem {
+    name: string,
+    id: number,
+    super?: boolean,
+}
+interface WhitelistGroupItem {
+    name: string,
+    id: number,
 }
 
-const whitelist = JSON.parse(fs.readFileSync("config/whitelist.json", "utf8")) as WhitelistItem[];
+interface Whitelist {
+    private: WhitelistPrivateItem[],
+    group: WhitelistGroupItem[],
+}
 
-export const isInWhiteList = (type: string, number: number | undefined): string | null => {
+const whitelist: Whitelist = JSON.parse(fs.readFileSync("config/whitelist.json", "utf8"));
 
-    for (let item of whitelist)
-        if (item.type === type && item.number === number)
-            return item.description;
+export const isInWhiteList = (type: 'private' | 'group' | undefined, id: number | undefined): string | null => {
+    if (!type)
+        return null;
+
+    for (let item of whitelist[type])
+        if (item.id === id)
+            return item.name;
 
     return null;
 }
 
-export const isSuperAdmin = (number: number | undefined): boolean => {
-    if (typeof number !== "number")
+export const isSuperAdmin = (id: number | undefined): boolean => {
+    if (typeof id !== "number")
         return false;
 
-    return whitelist.some(item => item.superAdmin && item.number === number);
+    return whitelist.private.some(item => item.super && item.id === id);
 }

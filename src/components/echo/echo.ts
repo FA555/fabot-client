@@ -1,6 +1,6 @@
 import type { MessageBody, TextMessageData } from "../../model";
 import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
-import { isSuperAdmin } from "../../whitelist";
+import { isInWhiteList } from "../../whitelist";
 import type { Plugin } from "../../plugin";
 
 interface EchoCommand {
@@ -50,7 +50,7 @@ const echo = (async (body: MessageBody, data: TextMessageData) => {
     if (!command)
         return;
 
-    if (!isSuperAdmin(body.user_id)) {
+    if (!isInWhiteList('private', body.user_id)) {
         let msg = "不听你的 嘻嘻";
         if (command.payload == msg)
             msg = "不听你的 嘿嘿";

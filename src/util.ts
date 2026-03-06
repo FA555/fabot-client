@@ -22,7 +22,7 @@ export const sendMessage = async (body: MessageBody, message: Message | Message[
 
     // console.log("sendMessage: " + JSON.stringify(msg));
     let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
-    console.log(response.data);
+    // console.log(response.data);
     return response.data.data.message_id;
 }
 
@@ -45,6 +45,6 @@ export const sendReplyMessage = async (body: MessageBody, message: Message | Mes
 
     // console.log("sendReplyMessage: " + JSON.stringify(msg));
     let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
-    console.log(response.data);
+    // console.log(response.data);
     return response.data.data.message_id;
 }
