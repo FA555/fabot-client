@@ -8,8 +8,9 @@ import type { Plugin } from "./plugin";
 
 import echo from "./components/echo/echo";
 import handle from "./components/handle/handle";
+import byrbbs from "./components/byrbbs/byrbbs";
 
-const plugins: Plugin[] = [echo, handle];
+const plugins: Plugin[] = [echo, handle, byrbbs];
 
 axios.interceptors.request.use(config => {
     config.headers = config.headers ?? {};
