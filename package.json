@@ -13,6 +13,7 @@
     "@types/pinyin": "^2.10.2",
     "async-mutex": "^0.5.0",
     "axios": "^1.13.6",
+    "execa": "^9.6.1",
     "hono": "^4.12.5",
     "html-to-text": "^9.0.5",
     "pino": "^9.14.0",
