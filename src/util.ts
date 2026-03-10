@@ -11,6 +11,19 @@ export const makeTextMessage = (text: string): Message => {
     return { type: "text", data: { text } };
 }
 
+export const sendMessageRaw = async (messageType: 'group' | 'private', id: string | number | undefined, message: Message | Message[]): Promise<number> => {
+    let msg = {
+        message_type: messageType,
+        user_id: messageType === 'private' ? id?.toString() : undefined,
+        group_id: messageType === 'group' ? id?.toString() : undefined,
+        message: message,
+    };
+
+    let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
+    // console.log(response.data);
+    return response.data.data.message_id;
+}
+
 export const sendMessage = async (body: MessageBody, message: Message | Message[], autoEscape: boolean = false): Promise<number> => {
     let msg = {
         message_type: body.message_type,

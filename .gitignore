@@ -175,5 +175,5 @@ dist
 .DS_Store
 
 # Project Specific
-config/whitelist.*
+config/*
 nohup.out

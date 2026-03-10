@@ -10,6 +10,17 @@ import echo from "./components/echo/echo";
 import handle from "./components/handle/handle";
 import byrbbs from "./components/byrbbs/byrbbs";
 import typst from "./components/typst/typst";
+import cronComponent from "./components/cron/cron";
+import { tasks } from "../config/hardcoded-tasks";
+
+for (const task of tasks) {
+    cronComponent.register(task);
+}
+
+cronComponent.start();
+
+process.on("SIGINT", () => cronComponent.stop());
+process.on("SIGTERM", () => cronComponent.stop());
 
 const plugins: Plugin[] = [echo, handle, byrbbs, typst];
 
