@@ -10,6 +10,7 @@ import echo from "./components/echo/echo";
 import handle from "./components/handle/handle";
 import byrbbs from "./components/byrbbs/byrbbs";
 import typst from "./components/typst/typst";
+import oeis from "./components/oeis/oeis";
 import cronComponent from "./components/cron/cron";
 import { tasks } from "../config/hardcoded-tasks";
 
@@ -22,7 +23,7 @@ cronComponent.start();
 process.on("SIGINT", () => cronComponent.stop());
 process.on("SIGTERM", () => cronComponent.stop());
 
-const plugins: Plugin[] = [echo, handle, byrbbs, typst];
+const plugins: Plugin[] = [echo, handle, byrbbs, typst, oeis];
 
 axios.interceptors.request.use(config => {
     config.headers = config.headers ?? {};
