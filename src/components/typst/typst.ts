@@ -3,15 +3,17 @@ import type { Plugin } from "../../plugin";
 
 import { execa } from "execa";
 import { chmod, copyFile, mkdtemp, readdir, readFile, rm, writeFile } from "fs/promises";
-import { tmpdir } from "os";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { makeTextMessage, sendReplyMessage } from "../../util";
 
+type TypstMode = 'auto' | 'a4' | 'math' | 'code';
+
 interface TypstInvocation {
-    mode: 'auto' | 'a4' | 'math';
+    mode: TypstMode;
     dev: boolean;
     help: boolean;
+    codeLang: string;
     payload: string;
 }
 
@@ -19,15 +21,17 @@ class Workspace {
     static TEMPLATE_DIR = fileURLToPath(new URL("./template/", import.meta.url));
 
     private binaryName: string;
-    private mode: 'auto' | 'a4' | 'math';
+    private mode: TypstMode;
+    private codeLang: string;
     private path: string = '';
     private ppi: number;
     private state: 'uninitialized' | 'initialized' | 'rendered' = 'uninitialized';
     private notes: string[] = [];
 
-    constructor(binaryName: string, mode: 'auto' | 'a4' | 'math', ppi: number = 180) {
+    constructor(binaryName: string, mode: TypstMode, codeLang: string, ppi: number = 180) {
         this.binaryName = binaryName;
         this.mode = mode;
+        this.codeLang = codeLang;
         this.ppi = ppi;
     }
 
@@ -52,7 +56,9 @@ class Workspace {
         await copyFile(join(Workspace.TEMPLATE_DIR, `${this.mode}.typ`), this.mainFile());
         await writeFile(
             this.mainFile(),
-            (await readFile(this.mainFile(), "utf-8")).replace("{{body}}", content),
+            (await readFile(this.mainFile(), "utf-8"))
+                .replace("{{body}}", content)
+                .replace("{{lang}}", this.codeLang),
             "utf-8"
         );
         this.state = 'initialized';
@@ -107,10 +113,19 @@ function parseInvocation(text: string): TypstInvocation | null {
         mode: 'auto',
         dev: false,
         help: false,
+        codeLang: "text",
         payload: "",
     };
 
     while (remainder.startsWith('.')) {
+        const codeMatch = remainder.match(/^\.code(?:\(([^)]+)\))?/i);
+        if (codeMatch) {
+            invocation.mode = 'code';
+            invocation.codeLang = (codeMatch[1]?.trim() || "text");
+            remainder = remainder.slice(codeMatch[0].length).trimStart();
+            continue;
+        }
+
         const match = remainder.match(/^(\.[a-zA-Z0-9]+)\b/);
         if (!match)
             break;
@@ -148,8 +163,8 @@ async function getTypstVersion(binaryName: string): Promise<string> {
     }
 }
 
-async function renderToDir(binaryName: string, mode: 'auto' | 'a4' | 'math', content: string): Promise<Workspace> {
-    const ws = new Workspace(binaryName, mode);
+async function renderToDir(binaryName: string, mode: TypstMode, codeLang: string, content: string): Promise<Workspace> {
+    const ws = new Workspace(binaryName, mode, codeLang);
     try {
         await ws.init(content);
         await ws.render();
@@ -180,7 +195,7 @@ const typst = (async (body: MessageBody, data: TextMessageData) => {
     }
 
     const binaryName = invocation.dev ? "typstb" : "typst";
-    const ws = await renderToDir(binaryName, invocation.mode, invocation.payload);
+    const ws = await renderToDir(binaryName, invocation.mode, invocation.codeLang, invocation.payload);
     const buffer = await dirToBuffers(ws);
     await sendReplyMessage(body, [
         makeTextMessage(ws.getNotes()),
