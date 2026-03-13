@@ -2,18 +2,18 @@ import logger from "../../log";
 import type { MessageBody, TextMessageData } from "../../model";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendMessage } from "../../util";
-import type { Article, Poster, PopularReply, ThreadHead, Thread, Pagination, ThreadResponse } from "./model";
+import type { ThreadResponse } from "./model";
 
 import { convert } from "html-to-text";
 
 function extractMatchedUrls(text: string): string[] | null {
-    const regex = /bbs\.byr\.cn\/(?:#!)?article\/[a-zA-Z0-9_]+\/\d+(\?p=\d+)?\/?/g;
+    const regex = /bbs6?\.byr\.cn\/(?:#!)?article\/[a-zA-Z0-9_]+\/\d+(\?p=\d+)?\/?/g;
     const matches = text.match(regex);
     return matches ? Array.from(new Set(matches)) : null;
 }
 
 const parseByrbbsLink = (url: string): string | null => {
-    const regex = /bbs\.byr\.cn\/(?:#!)?article\/([a-zA-Z0-9_]+)\/(\d+)\/?/;
+    const regex = /bbs6?\.byr\.cn\/(?:#!)?article\/([a-zA-Z0-9_]+)\/(\d+)\/?/;
     const match = url.match(regex);
     if (match) {
         const board = match[1]; // 第一个捕获组：版块名称
