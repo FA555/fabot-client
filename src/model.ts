@@ -37,6 +37,13 @@ export interface Message {
     data: MessageData,
 }
 
+export interface Sender {
+    user_id: number,
+    nickname: string,
+    card: string,
+    role?: string,
+}
+
 export interface MessageBody {
     meta_event_type?: string,
     message_type?: 'private' | 'group',
@@ -47,7 +54,7 @@ export interface MessageBody {
     message?: Message[],
     raw_message: string,
     font: number,
-    sender: any, // INGORED
+    sender: Sender,
     time: number,
     self_id: number,
     post_type: string,

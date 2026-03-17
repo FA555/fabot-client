@@ -7,6 +7,10 @@ export const isChineseCharacter = (char: string): boolean => {
     return char >= '\u4e00' && char <= '\u9fa5';
 }
 
+export const getAvatarUrl = (user_id: number, size: 40 | 100 | 140 | 640 = 640): string => {
+    return `https://q1.qlogo.cn/g?b=qq&nk=${user_id}&s=${size}`;
+}
+
 export const makeTextMessage = (text: string): Message => {
     return { type: "text", data: { text } };
 }

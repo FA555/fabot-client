@@ -11,6 +11,7 @@ import handle from "./components/handle/handle";
 import byrbbs from "./components/byrbbs/byrbbs";
 import typst from "./components/typst/typst";
 import oeis from "./components/oeis/oeis";
+import notify from "./components/notify/notify";
 import cronComponent from "./components/cron/cron";
 import { tasks } from "../config/hardcoded-tasks";
 
@@ -23,7 +24,7 @@ cronComponent.start();
 process.on("SIGINT", () => cronComponent.stop());
 process.on("SIGTERM", () => cronComponent.stop());
 
-const plugins: Plugin[] = [echo, handle, byrbbs, typst, oeis];
+const plugins: Plugin[] = [echo, handle, byrbbs, typst, oeis, notify];
 
 axios.interceptors.request.use(config => {
     config.headers = config.headers ?? {};
@@ -44,8 +45,8 @@ app.post("/", async c => {
 
     let name = isInWhiteList(body.message_type, body.group_id || body.user_id);
     if (name) {
-        // logger.info(name);
-        // logger.info(body.message);
+        logger.info(name);
+        logger.info(body);
         if (body.message && body.message.length === 1) {
             let message = body.message[0];
             switch (message.type) {
