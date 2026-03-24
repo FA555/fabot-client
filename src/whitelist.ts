@@ -1,4 +1,5 @@
 import fs from "fs";
+import type { MessageBody } from "./model";
 
 interface WhitelistPrivateItem {
     name: string,
@@ -17,10 +18,22 @@ interface Whitelist {
 
 const whitelist: Whitelist = JSON.parse(fs.readFileSync("config/whitelist.json", "utf8"));
 
-export const isInWhiteList = (type: 'private' | 'group' | undefined, id: number | undefined): string | null => {
+export const isInWhiteList = (body: MessageBody): string | null => {
+    const { message_type, group_id, user_id } = body;
+    const id = message_type === "group" ? group_id : user_id;
+    const type = message_type === "group" ? "group" : "private";
+
     if (!type)
         return null;
 
+    for (let item of whitelist[type])
+        if (item.id === id)
+            return item.name;
+
+    return null;
+}
+
+export const isInWhiteListById = (type: "private" | "group", id: number): string | null => {
     for (let item of whitelist[type])
         if (item.id === id)
             return item.name;

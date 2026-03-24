@@ -49,7 +49,7 @@ const notify = (async (body: MessageBody, data: TextMessageData) => {
 
     try {
         const senderName = body.sender.nickname;
-        const groupName = body.group_id ? isInWhiteList("group", body.group_id) : "私聊";
+        const groupName = body.message_type === "group" ? isInWhiteList(body) : "私聊";
         const sender = `${senderName}@${groupName}`;
 
         const url = buildEmergencyWebhookUrl(body.sender.user_id, sender, invocation.payload);

@@ -46,7 +46,7 @@ export interface Sender {
 
 export interface MessageBody {
     meta_event_type?: string,
-    message_type?: 'private' | 'group',
+    message_type: 'private' | 'group',
     sub_type: string,
     message_id: number | string,
     group_id?: number,

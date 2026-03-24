@@ -43,10 +43,10 @@ app.post("/", async c => {
         return c.json({ msg: "ok" });
     }
 
-    let name = isInWhiteList(body.message_type, body.group_id || body.user_id);
+    let name = isInWhiteList(body);
     if (name) {
-        logger.info(name);
-        logger.info(body);
+        // logger.info(name);
+        // logger.info(body);
         if (body.message && body.message.length === 1) {
             let message = body.message[0];
             switch (message.type) {
