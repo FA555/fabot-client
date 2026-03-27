@@ -1,4 +1,5 @@
 import fs from "fs";
+import { parse } from "yaml";
 import type { MessageBody } from "./model";
 
 interface WhitelistPrivateItem {
@@ -16,7 +17,7 @@ interface Whitelist {
     group: WhitelistGroupItem[],
 }
 
-const whitelist: Whitelist = JSON.parse(fs.readFileSync("config/whitelist.json", "utf8"));
+const whitelist: Whitelist = parse(fs.readFileSync("config/whitelist.yaml", "utf8"));
 
 export const isInWhiteList = (body: MessageBody): string | null => {
     const { message_type, group_id, user_id } = body;
