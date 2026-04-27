@@ -45,15 +45,28 @@ const parseCommand = (text: string): EchoCommand | null => {
     };
 }
 
+function getMsg(payload: string): string {
+    let trivial = false;
+    for (const ch of "不听你的")
+        if (!payload.includes(ch)) {
+            trivial = true;
+            break;
+        }
+
+    const countOf嘻 = payload.split("嘻").length - 1;
+    if (trivial || countOf嘻 < 2)
+        return "不听你的 嘻嘻";
+
+    return "不听你的 " + "嘻".repeat(countOf嘻 + 1);
+}
+
 const echo = (async (body: MessageBody, data: TextMessageData) => {
     const command = parseCommand(data.text);
     if (!command)
         return;
 
     if (!isInWhiteListById('private', body.sender.user_id)) {
-        let msg = "不听你的 嘻嘻";
-        if (command.payload == msg)
-            msg = "不听你的 嘿嘿";
+        const msg = getMsg(command.payload);
         await sendMessage(body, makeTextMessage(msg));
         return;
     }
