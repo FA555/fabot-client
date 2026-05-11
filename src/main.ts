@@ -15,6 +15,7 @@ import oeis from "./components/oeis/oeis";
 import notify from "./components/notify/notify";
 import cronComponent from "./components/cron/cron";
 import { tasks } from "../config/hardcoded-tasks";
+import { SERVER_URL } from "./config";
 
 for (const task of tasks) {
     cronComponent.register(task);
@@ -33,6 +34,32 @@ axios.interceptors.request.use(config => {
     return config;
 });
 
+interface LoginInfoResponse {
+    data?: {
+        user_id?: number,
+        nickname?: string,
+    },
+}
+
+let loginUserId: number | null = null;
+
+const initLoginUserId = async (): Promise<void> => {
+    try {
+        const response = await axios.post<LoginInfoResponse>(`${SERVER_URL}/get_login_info`, {});
+        const userId = response.data.data?.user_id;
+        if (typeof userId === "number") {
+            loginUserId = userId;
+            logger.info(`Loaded login user id: ${userId}`);
+        } else {
+            logger.warn("Failed to load login user id: invalid response");
+        }
+    } catch (error) {
+        logger.warn({ error }, "Failed to load login user id");
+    }
+};
+
+void initLoginUserId();
+
 const app = new Hono();
 console.log(`Starting server with NAPCAT_TOKEN: ${process.env.NAPCAT_TOKEN}`);
 
@@ -41,6 +68,13 @@ app.post("/", async c => {
 
     if (body.meta_event_type == "heartbeat") {
         logger.info("Heartbeat");
+        return c.json({ msg: "ok" });
+    }
+
+    const senderId = body.user_id ?? body.sender?.user_id;
+    const selfId = loginUserId ?? body.self_id;
+    if (typeof senderId === "number" && senderId === selfId) {
+        logger.info(`Ignored self message from login account: ${senderId}`);
         return c.json({ msg: "ok" });
     }
 
