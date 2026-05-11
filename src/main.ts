@@ -13,6 +13,7 @@ import bilibili from "./components/bilibili/bilibili";
 import typst from "./components/typst/typst";
 import oeis from "./components/oeis/oeis";
 import notify from "./components/notify/notify";
+import leetcode from "./components/leetcode/leetcode";
 import cronComponent from "./components/cron/cron";
 import { tasks } from "../config/hardcoded-tasks";
 import { SERVER_URL } from "./config";
@@ -26,7 +27,7 @@ cronComponent.start();
 process.on("SIGINT", () => cronComponent.stop());
 process.on("SIGTERM", () => cronComponent.stop());
 
-const plugins: Plugin[] = [echo, handle, byrbbs, bilibili, typst, oeis, notify];
+const plugins: Plugin[] = [echo, handle, byrbbs, bilibili, typst, oeis, notify, leetcode];
 
 axios.interceptors.request.use(config => {
     config.headers = config.headers ?? {};
