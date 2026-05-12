@@ -3,6 +3,7 @@ import { Hono } from "hono";
 
 import logger from "./log";
 import { isInWhiteList } from "./whitelist";
+import { getLoginUserId, initLoginInfo } from "./login-info";
 import type { MessageBody, TextMessageData } from "./model";
 import type { Plugin } from "./plugin";
 
@@ -14,9 +15,9 @@ import typst from "./components/typst/typst";
 import oeis from "./components/oeis/oeis";
 import notify from "./components/notify/notify";
 import leetcode from "./components/leetcode/leetcode";
+import ai from "./components/ai/ai";
 import cronComponent from "./components/cron/cron";
 import { tasks } from "../config/hardcoded-tasks";
-import { SERVER_URL } from "./config";
 
 for (const task of tasks) {
     cronComponent.register(task);
@@ -27,7 +28,7 @@ cronComponent.start();
 process.on("SIGINT", () => cronComponent.stop());
 process.on("SIGTERM", () => cronComponent.stop());
 
-const plugins: Plugin[] = [echo, handle, byrbbs, bilibili, typst, oeis, notify, leetcode];
+const plugins: Plugin[] = [echo, handle, byrbbs, bilibili, typst, oeis, notify, leetcode, ai];
 
 axios.interceptors.request.use(config => {
     config.headers = config.headers ?? {};
@@ -35,34 +36,12 @@ axios.interceptors.request.use(config => {
     return config;
 });
 
-interface LoginInfoResponse {
-    data?: {
-        user_id?: number,
-        nickname?: string,
-    },
-}
-
-let loginUserId: number | null = null;
-
-const initLoginUserId = async (): Promise<void> => {
-    try {
-        const response = await axios.post<LoginInfoResponse>(`${SERVER_URL}/get_login_info`, {});
-        const userId = response.data.data?.user_id;
-        if (typeof userId === "number") {
-            loginUserId = userId;
-            logger.info(`Loaded login user id: ${userId}`);
-        } else {
-            logger.warn("Failed to load login user id: invalid response");
-        }
-    } catch (error) {
-        logger.warn({ error }, "Failed to load login user id");
-    }
-};
-
-void initLoginUserId();
+void initLoginInfo();
 
 const app = new Hono();
 console.log(`Starting server with NAPCAT_TOKEN: ${process.env.NAPCAT_TOKEN}`);
+console.log(`Starting server with AUTH_BASE: ${process.env.AUTH_BASE ?? "not set"}`);
+console.log(`Starting server with AUTH_KEY: ${process.env.AUTH_KEY ? "****" : "not set"}`);
 
 app.post("/", async c => {
     const body = await c.req.json() as MessageBody;
@@ -73,7 +52,7 @@ app.post("/", async c => {
     }
 
     const senderId = body.user_id ?? body.sender?.user_id;
-    const selfId = loginUserId ?? body.self_id;
+    const selfId = getLoginUserId() ?? body.self_id;
     if (typeof senderId === "number" && senderId === selfId) {
         logger.info(`Ignored self message from login account: ${senderId}`);
         return c.json({ msg: "ok" });

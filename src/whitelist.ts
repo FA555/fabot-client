@@ -48,3 +48,9 @@ export const isSuperAdmin = (id: number | undefined): boolean => {
 
     return whitelist.private.some(item => item.super && item.id === id);
 }
+
+export const getSuperAdmins = (): Array<{ name: string; id: number }> => {
+    return whitelist.private
+        .filter(item => item.super)
+        .map(item => ({ name: item.name, id: item.id }));
+}
