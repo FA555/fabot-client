@@ -302,8 +302,11 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
     }
 }) as Plugin;
 
-handlePlugin.acceptMessage = (text: string): boolean => {
-    return text.trimStart().startsWith(HANDLE_COMMAND_PREFIX) || isInValidFormat(text.trim());
+handlePlugin.acceptMessage = (text: string, body: MessageBody): boolean => {
+    if (text.trimStart().startsWith(HANDLE_COMMAND_PREFIX))
+        return true;
+
+    return botStateManager.getState(getIdentifier(body)).state === State.Running && isInValidFormat(text.trim());
 }
 
 export default handlePlugin;

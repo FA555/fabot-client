@@ -69,8 +69,9 @@ app.post("/", async c => {
                 case "text":
                     let data = message.data as TextMessageData;
                     for (const plugin of plugins) {
-                        if (plugin.acceptMessage(data.text)) {
+                        if (plugin.acceptMessage(data.text, body)) {
                             await plugin(body, data);
+                            break;
                         }
                     }
                     break;

@@ -65,7 +65,7 @@ const MODEL_CONFIGS = {
     "ds-v4-flash": "deepseek-v4-flash",
     "ds-v4-pro": "deepseek-v4-pro",
 } as const;
-const MAX_HISTORY_MESSAGES = 16;
+const MAX_HISTORY_MESSAGES = 80;
 const MAX_HISTORY_CHARS = 12000;
 const REQUEST_TIMEOUT_MS = 120000;
 const SEARCH_TIMEOUT_MS = 15000;
@@ -94,12 +94,21 @@ function acceptsCommand(text: string): boolean {
     return trimmed === COMMAND_PREFIX || trimmed.startsWith(`${COMMAND_PREFIX}.`) || trimmed.startsWith(`${COMMAND_PREFIX} `);
 }
 
+function acceptsAiMessage(text: string, body: MessageBody): boolean {
+    return acceptsCommand(text) || (body.message_type === "private" && text.trim().length > 0);
+}
+
 function isModelKey(model: string): model is ModelKey {
     return Object.hasOwn(MODEL_CONFIGS, model);
 }
 
-function parseInvocation(text: string): AiInvocation | null {
+function parseInvocation(text: string, body: MessageBody): AiInvocation | null {
     if (!acceptsCommand(text)) {
+        const prompt = text.trim();
+        if (body.message_type === "private" && prompt) {
+            return { kind: "chat", modelKey: DEFAULT_MODEL, prompt, search: false };
+        }
+
         return null;
     }
 
@@ -249,7 +258,7 @@ function buildHelpMessage(): string {
         "",
         // `默认模型：${DEFAULT_MODEL}`,
         // `可用模型：${models}`,
-        "上下文：同一群聊共享，私聊按用户独立；只有 /ai 内容会进入上下文。",
+        "上下文：同一群聊共享，私聊按用户独立；群聊只有 /ai 内容会进入上下文，私聊未匹配其他命令的普通文本也会进入上下文。",
     ].join("\n");
 }
 
@@ -391,7 +400,7 @@ async function readChatCompletion(response: Response, url: string): Promise<stri
 }
 
 const ai = (async (body: MessageBody, data: TextMessageData) => {
-    const invocation = parseInvocation(data.text);
+    const invocation = parseInvocation(data.text, body);
     if (!invocation) {
         return;
     }
@@ -474,6 +483,6 @@ const ai = (async (body: MessageBody, data: TextMessageData) => {
     });
 }) as Plugin;
 
-ai.acceptMessage = acceptsCommand;
+ai.acceptMessage = acceptsAiMessage;
 
 export default ai;
