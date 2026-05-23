@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 
 import logger from "../../log";
 import type { Message, MessageBody, TextMessageData } from "../../model";
+import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
 
@@ -209,7 +210,7 @@ function htmlToMarkdown(html: string): string {
 }
 
 async function fetchDailyQuestion(): Promise<LeetcodeTodayRecord | null> {
-    const response = await fetch(LEETCODE_GRAPHQL_URL, {
+    const response = await botFetch(LEETCODE_GRAPHQL_URL, {
         method: "POST",
         headers: {
             "content-type": "application/json",

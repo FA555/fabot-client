@@ -1,4 +1,5 @@
 import type { MessageBody, TextMessageData } from "../../model";
+import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import logger from "../../log";
 import { makeTextMessage, sendReplyMessage } from "../../util";
@@ -80,7 +81,7 @@ async function queryBvidFromApi(query: string): Promise<{ bvid: string | null; f
     const encodedKeyword = encodeURIComponent(query);
     const requestUrl = `https://api.bilibili.com/x/web-interface/search/type?search_type=video&keyword=${encodedKeyword}`;
 
-    const response = await fetch(requestUrl, {
+    const response = await botFetch(requestUrl, {
         headers: buildHeaders("https://www.bilibili.com"),
     });
 
@@ -106,7 +107,7 @@ async function queryBvidFromWebPage(query: string): Promise<string | null> {
     const encodedKeyword = encodeURIComponent(query);
     const pageUrl = `https://search.bilibili.com/all?keyword=${encodedKeyword}`;
 
-    const response = await fetch(pageUrl, {
+    const response = await botFetch(pageUrl, {
         headers: buildHeaders("https://search.bilibili.com/"),
     });
 

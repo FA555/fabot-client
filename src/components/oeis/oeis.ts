@@ -1,4 +1,5 @@
 import type { MessageBody, TextMessageData } from "../../model";
+import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
 import logger from "../../log";
@@ -143,7 +144,7 @@ const oeis = (async (body: MessageBody, data: TextMessageData) => {
         url.searchParams.set("fmt", "json");
         url.searchParams.set("q", invocation.query);
 
-        const response = await fetch(url);
+        const response = await botFetch(url);
         if (!response.ok) {
             await sendReplyMessage(body, makeTextMessage(`OEIS 查询失败（HTTP ${response.status}）。`));
             return;

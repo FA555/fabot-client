@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 
 import logger from "../../log";
 import type { MessageBody, TextMessageData } from "../../model";
+import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendReplyMessage } from "../../util";
 import { getSuperAdmins } from "../../whitelist";
@@ -376,7 +377,7 @@ async function searchWeb(query: string): Promise<SearchResult[]> {
         const url = new URL("https://html.duckduckgo.com/html/");
         url.searchParams.set("q", query);
 
-        const response = await fetch(url, {
+        const response = await botFetch(url, {
             method: "GET",
             headers: {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -432,7 +433,7 @@ async function requestChatCompletion(modelKey: ModelKey, messages: ChatMessage[]
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-        const response = await fetch(url, {
+        const response = await botFetch(url, {
             method: "POST",
             headers: {
                 "authorization": `Bearer ${authKey}`,

@@ -1,7 +1,6 @@
-import axios from "axios";
-
 import { SERVER_URL } from "./config";
 import logger from "./log";
+import { botAxios } from "./network";
 
 interface LoginInfoResponse {
     data?: {
@@ -22,7 +21,7 @@ const loginInfo: LoginInfo = {
 
 export const initLoginInfo = async (): Promise<void> => {
     try {
-        const response = await axios.post<LoginInfoResponse>(`${SERVER_URL}/get_login_info`, {});
+        const response = await botAxios.post<LoginInfoResponse>(`${SERVER_URL}/get_login_info`, {});
         const userId = response.data.data?.user_id;
         const nickname = response.data.data?.nickname?.trim();
         if (typeof userId === "number") {

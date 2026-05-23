@@ -1,11 +1,11 @@
-import axios from "axios";
 import pinyin from "pinyin";
 
 import { HANDLE_SERVER_URL } from "../../config";
+import { botAxios } from "../../network";
 
 
 const get_pinyin = async (word: string): Promise<[string, boolean]> => {
-    const response = await axios.get(`${HANDLE_SERVER_URL}/try_get_pinyin?word=${word}`);
+    const response = await botAxios.get(`${HANDLE_SERVER_URL}/try_get_pinyin?word=${word}`);
 
     if (response.data?.pinyin)
         return [response.data.pinyin, true];

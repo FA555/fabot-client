@@ -1,7 +1,6 @@
-import axios from 'axios';
-
 import { HANDLE_SERVER_URL } from '../../config';
 import { getIdentifier, type Message, type MessageBody, type TextMessageData } from '../../model';
+import { botAxios } from '../../network';
 import type { Plugin } from '../../plugin';
 import { isChineseCharacter, makeTextMessage, sendMessage, sendReplyMessage } from '../../util';
 import { State, StateManager, botStateManager } from './state';
@@ -105,7 +104,7 @@ const sendHelpMessage = async (body: MessageBody) => {
 };
 
 const getRandomAnswer = async (): Promise<Answer> => {
-    const response = await axios.post(`${HANDLE_SERVER_URL}/start`);
+    const response = await botAxios.post(`${HANDLE_SERVER_URL}/start`);
     return new Answer(response.data.word, response.data.pinyin, response.data.explanation);
 }
 
@@ -118,7 +117,7 @@ const getCurrentImageMessage = async (body: MessageBody, finished: boolean = fal
     if (finished && current.attempts.length === 0)
         return null;
 
-    const response = await axios.post(`${HANDLE_SERVER_URL}/attempt`, {
+    const response = await botAxios.post(`${HANDLE_SERVER_URL}/attempt`, {
         answer: current.answer,
         attempts: current.attempts,
         finished,

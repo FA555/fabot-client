@@ -1,5 +1,6 @@
 import logger from "../../log";
 import type { MessageBody, TextMessageData } from "../../model";
+import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendMessage } from "../../util";
 import type { ThreadResponse } from "./model";
@@ -48,7 +49,7 @@ export const byrbbs = (async (body: MessageBody, data: TextMessageData) => {
             continue;
 
         try {
-            const response = await fetch(apiUrl);
+            const response = await botFetch(apiUrl);
             if (!response.ok) {
                 logger.error(`Failed to fetch data from ${apiUrl}: ${response.status} ${response.statusText}`);
                 continue;

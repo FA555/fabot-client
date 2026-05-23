@@ -1,4 +1,3 @@
-import axios from "axios";
 import { Hono } from "hono";
 
 import logger from "./log";
@@ -30,12 +29,6 @@ process.on("SIGINT", () => cronComponent.stop());
 process.on("SIGTERM", () => cronComponent.stop());
 
 const plugins: Plugin[] = [help, echo, handle, byrbbs, bilibili, typst, oeis, notify, leetcode, ai];
-
-axios.interceptors.request.use(config => {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${process.env.NAPCAT_TOKEN}`;
-    return config;
-});
 
 void initLoginInfo();
 

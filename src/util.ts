@@ -1,7 +1,6 @@
-import axios from 'axios';
-
 import { SERVER_URL } from './config';
 import type { Message, MessageBody } from './model';
+import { botAxios } from './network';
 
 export const isChineseCharacter = (char: string): boolean => {
     return char >= '\u4e00' && char <= '\u9fa5';
@@ -23,7 +22,7 @@ export const sendMessageRaw = async (messageType: 'group' | 'private', id: strin
         message: message,
     };
 
-    let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
+    let response = await botAxios.post(`${SERVER_URL}/send_msg`, msg);
     // console.log(response.data);
     return response.data.data.message_id;
 }
@@ -38,7 +37,7 @@ export const sendMessage = async (body: MessageBody, message: Message | Message[
     };
 
     // console.log("sendMessage: " + JSON.stringify(msg));
-    let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
+    let response = await botAxios.post(`${SERVER_URL}/send_msg`, msg);
     // console.log(response.data);
     return response.data.data.message_id;
 }
@@ -61,7 +60,7 @@ export const sendReplyMessage = async (body: MessageBody, message: Message | Mes
     };
 
     // console.log("sendReplyMessage: " + JSON.stringify(msg));
-    let response = await axios.post(`${SERVER_URL}/send_msg`, msg);
+    let response = await botAxios.post(`${SERVER_URL}/send_msg`, msg);
     console.log(response.data);
     return response.data.data.message_id;
 }

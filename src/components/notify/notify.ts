@@ -1,4 +1,5 @@
 import type { MessageBody, TextMessageData } from "../../model";
+import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import logger from "../../log";
 import { getAvatarUrl, makeTextMessage, sendReplyMessage } from "../../util";
@@ -53,7 +54,7 @@ const notify = (async (body: MessageBody, data: TextMessageData) => {
         const sender = `${senderName}@${groupName}`;
 
         const url = buildEmergencyWebhookUrl(body.sender.user_id, sender, invocation.payload);
-        const response = await fetch(url, { method: "GET" });
+        const response = await botFetch(url, { method: "GET" });
 
         if (!response.ok) {
             logger.warn({ status: response.status, group_id: body.group_id, user_id: body.user_id }, "Emergency webhook responded with non-OK status");
