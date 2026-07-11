@@ -2,6 +2,17 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 
 export type ProxyMode = "none" | "env";
 
+export const PROXY_ENV_KEYS = [
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+    "no_proxy",
+] as const;
+
 interface BotFetchInit extends RequestInit {
     proxy?: ProxyMode;
 }
@@ -43,10 +54,9 @@ export const botAxios = Object.assign(request, {
 });
 
 async function withoutEnvProxy<T>(fn: () => Promise<T>): Promise<T> {
-    const proxyEnvKeys = ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy"];
     const previous = new Map<string, string | undefined>();
 
-    for (const key of proxyEnvKeys) {
+    for (const key of PROXY_ENV_KEYS) {
         previous.set(key, process.env[key]);
         delete process.env[key];
     }
@@ -54,7 +64,7 @@ async function withoutEnvProxy<T>(fn: () => Promise<T>): Promise<T> {
     try {
         return await fn();
     } finally {
-        for (const key of proxyEnvKeys) {
+        for (const key of PROXY_ENV_KEYS) {
             const value = previous.get(key);
             if (value === undefined) {
                 delete process.env[key];

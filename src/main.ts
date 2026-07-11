@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import logger from "./log";
+import { PROXY_ENV_KEYS } from "./network";
 import { isInWhiteList } from "./whitelist";
 import { getLoginUserId, initLoginInfo } from "./login-info";
 import type { MessageBody, TextMessageData } from "./model";
@@ -28,14 +29,47 @@ cronComponent.start();
 process.on("SIGINT", () => cronComponent.stop());
 process.on("SIGTERM", () => cronComponent.stop());
 
-const plugins: Plugin[] = [help, echo, handle, byrbbs, bilibili, typst, oeis, notify, leetcode, ai];
+const plugins: Plugin[] = [help, echo, handle, bilibili, typst, oeis, notify, leetcode, ai];
 
 void initLoginInfo();
 
 const app = new Hono();
 console.log(`Starting server with NAPCAT_TOKEN: ${process.env.NAPCAT_TOKEN}`);
-console.log(`Starting server with AUTH_BASE: ${process.env.AUTH_BASE ?? "not set"}`);
+console.log(`Starting server with AUTH_BASE: ${process.env.AUTH_BASE ? "****" : "not set"}`);
 console.log(`Starting server with AUTH_KEY: ${process.env.AUTH_KEY ? "****" : "not set"}`);
+logProxyConfig();
+
+function redactProxyUrl(value: string): string {
+    try {
+        const url = new URL(value);
+        if (url.username || url.password) {
+            url.username = "****";
+            url.password = "";
+        }
+        return url.toString();
+    } catch {
+        return value;
+    }
+}
+
+function logProxyConfig(): void {
+    const entries = PROXY_ENV_KEYS
+        .map(key => {
+            const raw = process.env[key];
+            return [key, raw ? redactProxyUrl(raw) : undefined] as const;
+        })
+        .filter(([, value]) => value !== undefined);
+
+    if (entries.length === 0) {
+        console.log("Starting server with proxy env: none");
+        return;
+    }
+
+    console.log("Starting server with proxy env:");
+    for (const [key, value] of entries) {
+        console.log(`  ${key}=${value}`);
+    }
+}
 
 app.post("/", async c => {
     const body = await c.req.json() as MessageBody;
