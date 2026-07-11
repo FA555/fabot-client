@@ -72,13 +72,17 @@ class ChatCompletionError extends Error {
 }
 
 const COMMAND_PREFIX = "/ai";
-// const DEFAULT_MODEL = "ds-v4-flash";
-const DEFAULT_MODEL = "gpt-5.5";
+const DEFAULT_MODEL = "gpt-5.6-terra";
 const MODEL_CONFIGS = {
     "gpt-5.5-fast": "gpt-5.5-priority",
     "gpt-5.5": "gpt-5.5",
+    "gpt-5.6-luna": "gpt-5.6-luna",
+    "gpt-5.6-terra": "gpt-5.6-terra",
+    "gpt-5.6-sol": "gpt-5.6-sol",
     "ds-v4-flash": "deepseek-v4-flash",
     "ds-v4-pro": "deepseek-v4-pro",
+    "mimo-v2.5-pro": "mimo-v2.5-pro",
+    "glm-5.2": "glm-5.2",
 } as const;
 const MAX_HISTORY_MESSAGES = 80;
 const MAX_HISTORY_CHARS = 12000;
@@ -383,6 +387,7 @@ async function searchWeb(query: string): Promise<SearchResult[]> {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
             },
+            proxy: "env",
             signal: controller.signal,
         });
 
@@ -441,6 +446,7 @@ async function requestChatCompletion(modelKey: ModelKey, messages: ChatMessage[]
                 "accept": "application/json",
             },
             body: JSON.stringify(requestBody),
+            proxy: "env",
             signal: controller.signal,
         });
 
