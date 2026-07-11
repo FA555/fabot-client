@@ -1,3 +1,5 @@
+这本是一个 private 项目，仅供自己使用。2026.7.12 凌晨 publish（改为 public）。
+
 # fa-bot
 
 To install dependencies:
