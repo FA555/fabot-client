@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 
 import logger from "./log";
+import { flattenMessage } from "./message-flattener";
 import { PROXY_ENV_KEYS } from "./network";
 import { isInWhiteList } from "./whitelist";
 import { getLoginUserId, initLoginInfo } from "./login-info";
-import type { MessageBody, TextMessageData } from "./model";
+import type { MessageBody } from "./model";
 import type { Plugin } from "./plugin";
 
 import echo from "./components/echo/echo";
@@ -90,28 +91,21 @@ app.post("/", async c => {
     if (name) {
         // logger.info(name);
         // logger.info(body);
-        if (body.message && body.message.length === 1) {
-            let message = body.message[0];
-            switch (message.type) {
-                case "text":
-                    let data = message.data as TextMessageData;
-                    let handled = false;
-                    for (const plugin of plugins) {
-                        if (plugin.acceptMessage(data.text, body)) {
-                            await plugin(body, data);
-                            handled = true;
-                            break;
-                        }
-                    }
+        const data = await flattenMessage(body);
+        if (data) {
+            let handled = false;
+            for (const plugin of plugins) {
+                if (plugin.acceptMessage(data.text, body)) {
+                    await plugin(body, data);
+                    handled = true;
+                    break;
+                }
+            }
 
-                    if (!handled) {
-                        for (const plugin of plugins) {
-                            await plugin.observeMessage?.(body, data);
-                        }
-                    }
-                    break;
-                default:
-                    break;
+            if (!handled) {
+                for (const plugin of plugins) {
+                    await plugin.observeMessage?.(body, data);
+                }
             }
         }
     }

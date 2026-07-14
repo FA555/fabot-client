@@ -3,7 +3,7 @@ export interface TextMessageData {
 }
 
 export interface ReplyMessageData {
-    // TODO
+    id: string | number,
 }
 
 export interface ForwardMessageData {
@@ -11,7 +11,8 @@ export interface ForwardMessageData {
 }
 
 export interface AtMessageData {
-    // TODO
+    qq: string | number,
+    name?: string,
 }
 
 export interface VideoMessageData {
@@ -19,7 +20,15 @@ export interface VideoMessageData {
 }
 
 export interface ImageMessageData {
-    // TODO
+    file?: string,
+    url?: string,
+}
+
+export interface FaceMessageData {
+    id?: string | number,
+    raw?: {
+        faceText?: string,
+    },
 }
 
 export interface RecordMessageData {
@@ -27,10 +36,10 @@ export interface RecordMessageData {
 }
 
 export interface MfaceMessageData {
-    // TODO
+    summary?: string,
 }
 
-export type MessageData = TextMessageData | VideoMessageData | ReplyMessageData | ImageMessageData | RecordMessageData | MfaceMessageData;
+export type MessageData = TextMessageData | VideoMessageData | ReplyMessageData | ForwardMessageData | AtMessageData | ImageMessageData | FaceMessageData | RecordMessageData | MfaceMessageData;
 
 export interface Message {
     type: string,

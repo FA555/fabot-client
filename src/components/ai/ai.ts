@@ -7,7 +7,7 @@ import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendReplyMessage } from "../../util";
 import { getSuperAdmins } from "../../whitelist";
-import { getLoginNickname } from "../../login-info";
+import { getLoginNickname, getLoginUserId } from "../../login-info";
 
 type ChatRole = "system" | "user" | "assistant";
 
@@ -85,6 +85,7 @@ const MODEL_CONFIGS = {
     "ds-v4-pro": "deepseek-v4-pro",
     "mimo-v2.5-pro": "mimo-v2.5-pro",
     "glm-5.2": "glm-5.2",
+    "kimi-k3": "k3",
 } as const;
 const MAX_HISTORY_MESSAGES = 80;
 const MAX_HISTORY_CHARS = 12000;
@@ -92,7 +93,7 @@ const MAX_GROUP_CONTEXT_BLOCKS = 8;
 const MAX_GROUP_CONTEXT_BLOCK_MESSAGES = 12;
 const MAX_GROUP_CONTEXT_BLOCK_CHARS = 1200;
 const MAX_INCLUDED_GROUP_CONTEXT_BLOCKS = 6;
-const REQUEST_TIMEOUT_MS = 30000;
+const REQUEST_TIMEOUT_MS = 90000;
 const EARLY_FAILURE_THRESHOLD_MS = 5000;
 const RETRY_DELAY_MS = 2000;
 const SEARCH_TIMEOUT_MS = 10000;
@@ -122,8 +123,24 @@ function acceptsCommand(text: string): boolean {
     return trimmed === COMMAND_PREFIX || trimmed.startsWith(`${COMMAND_PREFIX}.`) || trimmed.startsWith(`${COMMAND_PREFIX} `);
 }
 
+function getLeadingBotMentionPrompt(text: string, body: MessageBody): string | null {
+    if (body.message_type !== "group") {
+        return null;
+    }
+
+    const match = text.trimStart().match(/^<at qq="(\d+)"(?: name="[^"]*")?>[^<]*<\/at>/);
+    const botUserId = getLoginUserId() ?? body.self_id;
+    if (!match || match[1] !== botUserId.toString()) {
+        return null;
+    }
+
+    return text.trimStart().slice(match[0].length).trimStart();
+}
+
 function acceptsAiMessage(text: string, body: MessageBody): boolean {
-    return acceptsCommand(text) || (body.message_type === "private" && text.trim().length > 0);
+    return acceptsCommand(text)
+        || (body.message_type === "private" && text.trim().length > 0)
+        || Boolean(getLeadingBotMentionPrompt(text, body));
 }
 
 function isModelKey(model: string): model is ModelKey {
@@ -131,6 +148,19 @@ function isModelKey(model: string): model is ModelKey {
 }
 
 function parseInvocation(text: string, body: MessageBody): AiInvocation | null {
+    const mentionPrompt = getLeadingBotMentionPrompt(text, body);
+    if (mentionPrompt !== null) {
+        if (!mentionPrompt) {
+            return null;
+        }
+
+        if (!acceptsCommand(mentionPrompt)) {
+            return { kind: "chat", modelKey: DEFAULT_MODEL, prompt: mentionPrompt, search: false };
+        }
+
+        text = mentionPrompt;
+    }
+
     if (!acceptsCommand(text)) {
         const prompt = text.trim();
         if (body.message_type === "private" && prompt) {
@@ -350,7 +380,7 @@ function buildHelpMessage(): string {
         "",
         // `默认模型：${DEFAULT_MODEL}`,
         // `可用模型：${models}`,
-        "上下文：同一群聊共享，私聊按用户独立；群聊只有 /ai 会触发回复，但未匹配其他命令的普通群聊文本会作为背景上下文。",
+        "上下文：同一群聊共享，私聊按用户独立；群聊使用 /ai 或在消息开头 @bot 会触发回复，但未匹配其他命令的普通群聊文本会作为背景上下文。",
     ].join("\n");
 }
 
@@ -435,7 +465,7 @@ async function requestChatCompletion(modelKey: ModelKey, messages: ChatMessage[]
     const requestBody = {
         model: MODEL_CONFIGS[modelKey],
         messages,
-        temperature: 0.7,
+        temperature: 1,
     };
     logger.info({ url, body: requestBody }, "AI chat completion request");
 
