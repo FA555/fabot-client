@@ -1,6 +1,7 @@
 import cron, { type ScheduledTask } from "node-cron";
 
 import logger from "../../log";
+import { runWithAuditContext } from "../../audit";
 
 export type CronOperation = () => void | Promise<void>;
 
@@ -34,7 +35,7 @@ export class CronComponent {
             input.expression,
             async () => {
                 try {
-                    await input.operation();
+                    await runWithAuditContext({ pluginName: "cron", source: "cron" }, input.operation);
                 } catch (error) {
                     logger.error({ error, job: input.name }, "Cron job failed");
                 }

@@ -8,6 +8,7 @@ import type { AttemptOutcome } from './state';
 import { Answer, getEffectiveExplanation } from './model';
 import logger from '../../log';
 import { MAX_ATTEMPT_COUNT, HANDLE_TIMEOUT_MS, HINT_AVAILABLE_ATTEMPT_COUNT } from './config';
+import { runWithAuditContext } from '../../audit';
 
 const timeoutHandles = new Map<string, ReturnType<typeof setTimeout>>();
 const HANDLE_COMMAND_PREFIX = "/handle";
@@ -37,7 +38,9 @@ const updateTimeout = (body: MessageBody) => {
     const identifier = getIdentifier(body);
     clearTimeoutFor(identifier);
     const timeout = setTimeout(() => {
-        void finishByTimeout(identifier, body);
+        void runWithAuditContext({ auditId: undefined, pluginName: "handle", source: "background" }, () => (
+            finishByTimeout(identifier, body)
+        ));
     }, HANDLE_TIMEOUT_MS);
     timeoutHandles.set(identifier, timeout);
 };

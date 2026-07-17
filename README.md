@@ -14,4 +14,42 @@ To run:
 bun run src/main.ts
 ```
 
+## 审计统计
+
+Bot 使用 Bun SQLite 将审计元数据保存在 `data/audit.sqlite`。审计记录不包含聊天正文、AI Prompt、回复正文或昵称，只记录用户和会话标识、功能名称、消息长度、执行结果、耗时及 token 等统计字段。
+
+只有 `config/whitelist.yaml` 中标记为 `super: true` 的用户可以通过私聊查询：
+
+```text
+/audit                       # 全部历史总览
+/audit.time(7d)              # 最近 7 天总览
+/audit.plugins.time(7d)      # 最近 7 天各功能明细
+/audit.ai.time(1d)           # 最近 1 天 AI 明细
+```
+
+参数使用与其他插件一致的点式链式格式，顺序无关，例如 `/audit.time(1d).ai` 等价于 `/audit.ai.time(1d)`。时间范围支持 `h`、`d` 和 `w`。审计命令及其回复与其他插件一样计入统计；当前查询的回复会在发送成功后入库，因此从下一次查询开始可见。
+
+可选环境变量：
+
+```text
+AUDIT_DB_PATH=data/audit.sqlite
+BOT_HOST=127.0.0.1
+WEBHOOK_TOKEN=replace-with-a-random-secret
+```
+
+服务默认只监听 `127.0.0.1`。如果需要通过 `BOT_HOST=0.0.0.0` 等配置对外监听，必须同时配置 `WEBHOOK_TOKEN`，并让 NapCat 反向 HTTP 请求携带 `Authorization: Bearer <token>`。否则管理命令的用户身份只能依赖未经 HTTP 鉴权的事件字段。
+
+审计数据默认永久保留，不会自动清理；`/audit` 默认查询全部历史。数据库文件权限会设为 `0600`。生产环境应使用 SQLite 在线备份工具，或停服后连同 WAL 文件一起备份；不要在服务运行时仅复制 `data/audit.sqlite`，也不要把数据库提交到 Git。
+
+统计口径：
+
+- 活跃用户：时间范围内发送过有效消息的去重用户数。
+- 功能调用：消息被某个插件接受并开始执行。
+- 回应消息：至少成功投递一条回复的去重入站消息数。
+- 发出消息：NapCat 确认成功投递的用户链路及后台功能消息总数，不包含 Cron 主动消息。
+- AI 生成：AI Provider 成功返回非空结果。
+- AI 回答：AI 生成成功且至少成功投递一次。
+
+入站 webhook 采用 at-most-once 处理：相同消息 ID 的重投会被忽略。插件或投递失败会保留在审计数据中，但不会自动重放，以免重复执行 Emergency、Handle 等非幂等副作用。
+
 This project was created using `bun init` in bun v1.1.29. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.

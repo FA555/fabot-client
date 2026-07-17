@@ -4,3 +4,9 @@ export type Plugin = ((body: MessageBody, data: TextMessageData) => Promise<void
     acceptMessage: (text: string, body: MessageBody) => boolean;
     observeMessage?: (body: MessageBody, data: TextMessageData) => Promise<void> | void;
 };
+
+export interface RegisteredPlugin {
+    name: string;
+    plugin: Plugin;
+    excludeFromAuditStats?: boolean;
+}

@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 
 import logger from "./log";
-import { flattenMessage } from "./message-flattener";
 import { PROXY_ENV_KEYS } from "./network";
-import { isInWhiteList } from "./whitelist";
-import { getLoginUserId, initLoginInfo } from "./login-info";
+import { initLoginInfo } from "./login-info";
 import type { MessageBody } from "./model";
-import type { Plugin } from "./plugin";
+import type { RegisteredPlugin } from "./plugin";
+import { handleMessage } from "./message-handler";
+import { isWebhookAuthorized } from "./webhook-auth";
+import { getAuditStore } from "./audit";
 
 import echo from "./components/echo/echo";
 import handle from "./components/handle/handle";
@@ -18,8 +19,11 @@ import notify from "./components/notify/notify";
 import leetcode from "./components/leetcode/leetcode";
 import ai from "./components/ai/ai";
 import help from "./components/help/help";
+import audit from "./components/audit/audit";
 import cronComponent from "./components/cron/cron";
 import { tasks } from "../config/hardcoded-tasks";
+
+getAuditStore();
 
 for (const task of tasks) {
     cronComponent.register(task);
@@ -30,12 +34,24 @@ cronComponent.start();
 process.on("SIGINT", () => cronComponent.stop());
 process.on("SIGTERM", () => cronComponent.stop());
 
-const plugins: Plugin[] = [help, echo, handle, bilibili, typst, oeis, notify, leetcode, ai];
+const plugins: RegisteredPlugin[] = [
+    { name: "audit", plugin: audit },
+    { name: "help", plugin: help },
+    { name: "echo", plugin: echo },
+    { name: "handle", plugin: handle },
+    { name: "bilibili", plugin: bilibili },
+    { name: "typst", plugin: typst },
+    { name: "oeis", plugin: oeis },
+    { name: "notify", plugin: notify },
+    { name: "leetcode", plugin: leetcode },
+    { name: "ai", plugin: ai },
+];
 
 void initLoginInfo();
 
 const app = new Hono();
-console.log(`Starting server with NAPCAT_TOKEN: ${process.env.NAPCAT_TOKEN}`);
+console.log(`Starting server with NAPCAT_TOKEN: ${process.env.NAPCAT_TOKEN ? "****" : "not set"}`);
+console.log(`Starting server with WEBHOOK_TOKEN: ${process.env.WEBHOOK_TOKEN ? "****" : "not set"}`);
 console.log(`Starting server with AUTH_BASE: ${process.env.AUTH_BASE ? "****" : "not set"}`);
 console.log(`Starting server with AUTH_KEY: ${process.env.AUTH_KEY ? "****" : "not set"}`);
 logProxyConfig();
@@ -73,43 +89,20 @@ function logProxyConfig(): void {
 }
 
 app.post("/", async c => {
-    const body = await c.req.json() as MessageBody;
-
-    if (body.meta_event_type == "heartbeat") {
-        logger.info("Heartbeat");
-        return c.json({ msg: "ok" });
+    if (!isWebhookAuthorized(c.req.header("authorization"))) {
+        logger.warn("Rejected unauthorized webhook request");
+        return c.json({ msg: "unauthorized" }, 401);
     }
 
-    const senderId = body.user_id ?? body.sender?.user_id;
-    const selfId = getLoginUserId() ?? body.self_id;
-    if (typeof senderId === "number" && senderId === selfId) {
-        logger.info(`Ignored self message from login account: ${senderId}`);
-        return c.json({ msg: "ok" });
+    let body: MessageBody;
+    try {
+        body = await c.req.json() as MessageBody;
+    } catch (error) {
+        logger.warn({ error }, "Rejected invalid webhook JSON");
+        return c.json({ msg: "invalid JSON" }, 400);
     }
 
-    let name = isInWhiteList(body);
-    if (name) {
-        // logger.info(name);
-        // logger.info(body);
-        const data = await flattenMessage(body);
-        if (data) {
-            let handled = false;
-            for (const plugin of plugins) {
-                if (plugin.acceptMessage(data.text, body)) {
-                    await plugin(body, data);
-                    handled = true;
-                    break;
-                }
-            }
-
-            if (!handled) {
-                for (const plugin of plugins) {
-                    await plugin.observeMessage?.(body, data);
-                }
-            }
-        }
-    }
-
+    await handleMessage(body, plugins);
     return c.json({ msg: "ok" });
 })
 
@@ -119,6 +112,7 @@ app.get("/ping", c => {
 })
 
 export default {
+    hostname: process.env.BOT_HOST?.trim() || "127.0.0.1",
     port: 55550,
     fetch: app.fetch,
 };

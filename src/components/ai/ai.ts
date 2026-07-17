@@ -8,6 +8,7 @@ import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendReplyMessage } from "../../util";
 import { getSuperAdmins } from "../../whitelist";
 import { getLoginNickname, getLoginUserId } from "../../login-info";
+import { getAuditContext, getAuditStore } from "../../audit";
 
 type ChatRole = "system" | "user" | "assistant";
 
@@ -53,6 +54,20 @@ interface ChatCompletionResponse {
     error?: {
         message?: string;
     };
+    usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        input_tokens?: number;
+        output_tokens?: number;
+        total_tokens?: number;
+    };
+}
+
+interface ChatCompletionResult {
+    content: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
 }
 
 class ChatCompletionError extends Error {
@@ -61,9 +76,6 @@ class ChatCompletionError extends Error {
         readonly details: {
             status?: number;
             statusText?: string;
-            responseText?: string;
-            responsePayload?: unknown;
-            url?: string;
         } = {},
     ) {
         super(message);
@@ -454,11 +466,40 @@ function getChatCompletionUrl(baseUrl: string): string {
     return `${baseUrl.replace(/\/$/, "")}/v1/chat/completions`;
 }
 
-async function requestChatCompletion(modelKey: ModelKey, messages: ChatMessage[]): Promise<string> {
+async function requestChatCompletion(
+    modelKey: ModelKey,
+    messages: ChatMessage[],
+    search: boolean,
+    promptLength: number,
+): Promise<ChatCompletionResult> {
     const authBase = process.env.AUTH_BASE?.trim();
     const authKey = process.env.AUTH_KEY?.trim();
+    const context = getAuditContext();
+    const startedAt = Date.now();
+    let attempts = 0;
+    const record = (status: "succeeded" | "failed", result?: ChatCompletionResult, error?: unknown): void => {
+        getAuditStore().recordAiRequest({
+            auditId: context?.auditId,
+            pluginName: context?.pluginName,
+            modelKey,
+            model: MODEL_CONFIGS[modelKey],
+            search,
+            status,
+            attempts,
+            durationMs: Date.now() - startedAt,
+            promptLength,
+            responseLength: result?.content.length,
+            inputTokens: result?.inputTokens,
+            outputTokens: result?.outputTokens,
+            totalTokens: result?.totalTokens,
+            errorCode: error instanceof Error ? error.name : error ? "UnknownError" : undefined,
+            excludeFromStats: context?.excludeFromStats,
+        });
+    };
     if (!authBase || !authKey) {
-        throw new ChatCompletionError("Missing AUTH_BASE or AUTH_KEY");
+        const error = new ChatCompletionError("Missing AUTH_BASE or AUTH_KEY");
+        record("failed", undefined, error);
+        throw error;
     }
 
     const url = getChatCompletionUrl(authBase);
@@ -467,9 +508,10 @@ async function requestChatCompletion(modelKey: ModelKey, messages: ChatMessage[]
         messages,
         temperature: 1,
     };
-    logger.info({ url, body: requestBody }, "AI chat completion request");
+    logger.info({ modelKey, model: MODEL_CONFIGS[modelKey], messageCount: messages.length, promptLength }, "AI chat completion request");
 
-    const sendRequest = async (): Promise<string> => {
+    const sendRequest = async (): Promise<ChatCompletionResult> => {
+        attempts += 1;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         try {
@@ -491,37 +533,43 @@ async function requestChatCompletion(modelKey: ModelKey, messages: ChatMessage[]
         }
     };
 
-    const startedAt = Date.now();
     try {
-        return await sendRequest();
+        const result = await sendRequest();
+        record("succeeded", result);
+        return result;
     } catch (error) {
         const elapsedMs = Date.now() - startedAt;
         if (elapsedMs > EARLY_FAILURE_THRESHOLD_MS) {
+            record("failed", undefined, error);
             throw error;
         }
 
         logger.warn({ error, elapsedMs, retryDelayMs: RETRY_DELAY_MS }, "AI chat completion failed early; retrying once");
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-        return sendRequest();
+        try {
+            const result = await sendRequest();
+            record("succeeded", result);
+            return result;
+        } catch (retryError) {
+            record("failed", undefined, retryError);
+            throw retryError;
+        }
     }
 }
 
-async function readChatCompletion(response: Response, url: string): Promise<string> {
+async function readChatCompletion(response: Response, _url: string): Promise<ChatCompletionResult> {
     const responseText = await response.text();
     let payload: ChatCompletionResponse | null = null;
     try {
         payload = responseText ? JSON.parse(responseText) as ChatCompletionResponse : null;
     } catch (error) {
-        logger.warn({ error, status: response.status, responseText }, "AI response is not valid JSON");
+        logger.warn({ error, status: response.status }, "AI response is not valid JSON");
     }
 
     if (!response.ok) {
         throw new ChatCompletionError(payload?.error?.message || `HTTP ${response.status}`, {
             status: response.status,
             statusText: response.statusText,
-            responseText,
-            responsePayload: payload,
-            url,
         });
     }
 
@@ -530,13 +578,21 @@ async function readChatCompletion(response: Response, url: string): Promise<stri
         throw new ChatCompletionError("Empty chat completion response", {
             status: response.status,
             statusText: response.statusText,
-            responseText,
-            responsePayload: payload,
-            url,
         });
     }
 
-    return content;
+    return {
+        content,
+        inputTokens: payload?.usage?.prompt_tokens ?? payload?.usage?.input_tokens,
+        outputTokens: payload?.usage?.completion_tokens ?? payload?.usage?.output_tokens,
+        totalTokens: payload?.usage?.total_tokens ?? (
+            (payload?.usage?.prompt_tokens ?? payload?.usage?.input_tokens) !== undefined
+            && (payload?.usage?.completion_tokens ?? payload?.usage?.output_tokens) !== undefined
+                ? (payload?.usage?.prompt_tokens ?? payload?.usage?.input_tokens ?? 0)
+                    + (payload?.usage?.completion_tokens ?? payload?.usage?.output_tokens ?? 0)
+                : undefined
+        ),
+    };
 }
 
 const ai = (async (body: MessageBody, data: TextMessageData) => {
@@ -583,9 +639,9 @@ const ai = (async (body: MessageBody, data: TextMessageData) => {
                 }
 
                 searchContext = formatSearchContext(results);
-                logger.info({ query: invocation.prompt, results }, "AI web search completed");
+                logger.info({ resultCount: results.length }, "AI web search completed");
             } catch (error) {
-                logger.error({ error, query: invocation.prompt }, "AI web search failed");
+                logger.error({ error }, "AI web search failed");
                 await sendReplyMessage(body, makeTextMessage("联网搜索失败，请稍后再试。"));
                 return;
             }
@@ -599,14 +655,14 @@ const ai = (async (body: MessageBody, data: TextMessageData) => {
             userMessage,
         ];
 
+        let completion: ChatCompletionResult;
         try {
-            const reply = await requestChatCompletion(invocation.modelKey, messages);
-            histories.set(sessionKey, trimHistory([
-                ...history,
-                userMessage,
-                { role: "assistant", content: reply },
-            ]));
-            await sendReplyMessage(body, makeTextMessage(reply));
+            completion = await requestChatCompletion(
+                invocation.modelKey,
+                messages,
+                invocation.search,
+                invocation.prompt.length,
+            );
         } catch (error) {
             logger.error({
                 error,
@@ -616,12 +672,25 @@ const ai = (async (body: MessageBody, data: TextMessageData) => {
                 messageCount: messages.length,
                 historyMessageCount: history.length,
                 promptLength: invocation.prompt.length,
-                details: error instanceof ChatCompletionError ? error.details : undefined,
+                status: error instanceof ChatCompletionError ? error.details.status : undefined,
             }, "AI chat completion failed");
             const message = error instanceof Error && error.message === "Missing AUTH_BASE or AUTH_KEY"
                 ? "AI 服务未配置 AUTH_BASE/AUTH_KEY。"
                 : "AI 请求失败，请稍后再试。";
             await sendReplyMessage(body, makeTextMessage(message));
+            return;
+        }
+
+        try {
+            await sendReplyMessage(body, makeTextMessage(completion.content));
+            histories.set(sessionKey, trimHistory([
+                ...history,
+                userMessage,
+                { role: "assistant", content: completion.content },
+            ]));
+        } catch (error) {
+            logger.error({ error, sessionKey, modelKey: invocation.modelKey }, "AI reply delivery failed");
+            throw error;
         }
     });
 }) as Plugin;
