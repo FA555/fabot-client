@@ -138,8 +138,8 @@ function parsePluginSettingsMap(
 }
 
 function parsePositiveIntegerSet(value: unknown, path: string): ReadonlySet<number> {
-    if (!Array.isArray(value) || value.length === 0) {
-        throw new Error(`${path} must be a non-empty array of positive integers`);
+    if (!Array.isArray(value)) {
+        throw new Error(`${path} must be an array of positive integers`);
     }
     const result = new Set<number>();
     for (const item of value) {

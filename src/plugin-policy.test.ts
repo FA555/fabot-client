@@ -81,6 +81,19 @@ describe("compilePluginPolicy", () => {
         expect(policy.isEnabled("handle", "invoke", makeBody("group", 200, 7))).toBe(true);
     });
 
+    test("treats empty ID selectors as matching no chats", () => {
+        const policy = compilePluginPolicy({
+            version: 1,
+            rules: [{
+                id: "not-configured-yet",
+                match: { chat_type: "group", chat_ids: [] },
+                plugins: { "*": { enabled: false } },
+            }],
+        }, ["ai"]);
+
+        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7))).toBe(true);
+    });
+
     test("matches super administrators without bypassing other selectors", () => {
         const policy = compilePluginPolicy({
             version: 1,
