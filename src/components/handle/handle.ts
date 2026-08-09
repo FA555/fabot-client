@@ -1,6 +1,6 @@
 import { HANDLE_SERVER_URL } from '../../config';
 import { getIdentifier, type Message, type MessageBody, type TextMessageData } from '../../model';
-import { botAxios } from '../../network';
+import { serviceAxios } from '../../network';
 import type { Plugin } from '../../plugin';
 import { isChineseCharacter, makeTextMessage, sendMessage, sendReplyMessage } from '../../util';
 import { State, StateManager, botStateManager } from './state';
@@ -9,6 +9,7 @@ import { Answer, getEffectiveExplanation } from './model';
 import logger from '../../log';
 import { MAX_ATTEMPT_COUNT, HANDLE_TIMEOUT_MS, HINT_AVAILABLE_ATTEMPT_COUNT } from './config';
 import { runWithAuditContext } from '../../audit';
+import { matchesCommand } from '../../command';
 
 const timeoutHandles = new Map<string, ReturnType<typeof setTimeout>>();
 const HANDLE_COMMAND_PREFIX = "/handle";
@@ -98,7 +99,7 @@ const sendHelpMessage = async (body: MessageBody) => {
 
     await sendMessage(body, makeTextMessage(
         "Handle 是一个类似 Wordle 的猜成语游戏，最早由 https://github.com/antfu/handle 制作。"
-        + "\n本 Handle Bot 的成语库来自 https://github.com/pwxcoo/chinese-xinhua，答案库为成语库和清华大学 https://github.com/thunlp/THUOCL 的交集的词频前 4000 名。"
+        + "\n本 Handle Bot 的成语库来自 https://github.com/pwxcoo/chinese-xinhua，答案库为成语库和清华大学 https://github.com/thunlp/THUOCL 的交集的词频前 5000 名。"
         + `\n\n用法：${HANDLE_COMMAND_PREFIX} [..选项] [猜测词语]`
         + `\n选项：`
         + options.map(o => `\n\t${o.short ? `${o.short}, ` : ''}${o.long}${' '.repeat(longestOptionLength - getOptionLength(o))} ${o.description}`).join('')
@@ -107,7 +108,7 @@ const sendHelpMessage = async (body: MessageBody) => {
 };
 
 const getRandomAnswer = async (): Promise<Answer> => {
-    const response = await botAxios.post(`${HANDLE_SERVER_URL}/start`);
+    const response = await serviceAxios.post(`${HANDLE_SERVER_URL}/start`);
     return new Answer(response.data.word, response.data.pinyin, response.data.explanation);
 }
 
@@ -120,7 +121,7 @@ const getCurrentImageMessage = async (body: MessageBody, finished: boolean = fal
     if (finished && current.attempts.length === 0)
         return null;
 
-    const response = await botAxios.post(`${HANDLE_SERVER_URL}/attempt`, {
+    const response = await serviceAxios.post(`${HANDLE_SERVER_URL}/attempt`, {
         answer: current.answer,
         attempts: current.attempts,
         finished,
@@ -305,7 +306,7 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
 }) as Plugin;
 
 handlePlugin.acceptMessage = (text: string, body: MessageBody): boolean => {
-    if (text.trimStart().startsWith(HANDLE_COMMAND_PREFIX))
+    if (matchesCommand(text, HANDLE_COMMAND_PREFIX, { allowOptions: true }))
         return true;
 
     return botStateManager.getState(getIdentifier(body)).state === State.Running && isInValidFormat(text.trim());

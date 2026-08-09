@@ -5,6 +5,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 
 import logger from "../../log";
+import { matchesCommand } from "../../command";
 import type { Message, MessageBody, TextMessageData } from "../../model";
 import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
@@ -70,7 +71,7 @@ query questionOfToday {
 }`;
 
 function acceptsCommand(text: string): boolean {
-    return text.trimStart().startsWith(COMMAND_PREFIX);
+    return matchesCommand(text, COMMAND_PREFIX);
 }
 
 function parseInvocation(text: string): boolean {

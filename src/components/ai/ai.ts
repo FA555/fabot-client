@@ -9,6 +9,7 @@ import { makeTextMessage, sendReplyMessage } from "../../util";
 import { getSuperAdmins } from "../../whitelist";
 import { getLoginNickname, getLoginUserId } from "../../login-info";
 import { getAuditContext, getAuditStore } from "../../audit";
+import { matchesCommand } from "../../command";
 
 type ChatRole = "system" | "user" | "assistant";
 
@@ -131,8 +132,7 @@ function loadSystemPromptTemplate(): string {
 const systemPromptTemplate = loadSystemPromptTemplate();
 
 function acceptsCommand(text: string): boolean {
-    const trimmed = text.trimStart();
-    return trimmed === COMMAND_PREFIX || trimmed.startsWith(`${COMMAND_PREFIX}.`) || trimmed.startsWith(`${COMMAND_PREFIX} `);
+    return matchesCommand(text, COMMAND_PREFIX, { allowOptions: true });
 }
 
 function getLeadingBotMentionPrompt(text: string, body: MessageBody): string | null {
@@ -150,6 +150,7 @@ function getLeadingBotMentionPrompt(text: string, body: MessageBody): string | n
 }
 
 function acceptsAiMessage(text: string, body: MessageBody): boolean {
+    return false;
     return acceptsCommand(text)
         || (body.message_type === "private" && text.trim().length > 0)
         || Boolean(getLeadingBotMentionPrompt(text, body));
@@ -433,7 +434,7 @@ async function searchWeb(query: string): Promise<SearchResult[]> {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
             },
-            proxy: "env",
+            proxyMode: "env",
             signal: controller.signal,
         });
 
@@ -523,7 +524,7 @@ async function requestChatCompletion(
                     "accept": "application/json",
                 },
                 body: JSON.stringify(requestBody),
-                proxy: "env",
+                proxyMode: "env",
                 signal: controller.signal,
             });
 

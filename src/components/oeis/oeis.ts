@@ -3,6 +3,7 @@ import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
 import logger from "../../log";
+import { matchesCommand } from "../../command";
 
 interface OeisInvocation {
     query: string;
@@ -23,7 +24,7 @@ const FIRST_DEFAULT_RESULTS = 1;
 const HARD_MAX_RESULTS = 20;
 
 function acceptsCommand(text: string): boolean {
-    return text.trimStart().startsWith(COMMAND_PREFIX);
+    return matchesCommand(text, COMMAND_PREFIX, { allowOptions: true });
 }
 
 function parseInvocation(text: string): OeisInvocation | null {

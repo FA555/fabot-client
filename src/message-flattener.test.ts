@@ -56,4 +56,30 @@ describe("flattenMessage", () => {
         expect(data?.text).toBe("/ai 总结");
         expect(requestCount).toBe(0);
     });
+
+    test("handles all-member mentions and unknown segment types", async () => {
+        const data = await flattenMessage(makeBody([
+            { type: "at", data: { qq: "all" } },
+            { type: "custom<&", data: {} },
+        ]));
+
+        expect(data?.text).toBe('<at target="all">全体成员</at><message type="custom&lt;&amp;">尚不支持此消息类型</message>');
+    });
+
+    test("falls back to the numeric user ID when mention lookup fails", async () => {
+        botAxios.post = (async () => {
+            throw new Error("lookup failed");
+        }) as typeof botAxios.post;
+
+        const data = await flattenMessage(makeBody([
+            { type: "at", data: { qq: "1234" } },
+        ]));
+
+        expect(data?.text).toBe('<at qq="1234">1234</at>');
+    });
+
+    test("returns null for empty and reply-only messages", async () => {
+        expect(await flattenMessage(makeBody([]))).toBeNull();
+        expect(await flattenMessage(makeBody([{ type: "reply", data: { id: 1 } }]))).toBeNull();
+    });
 });

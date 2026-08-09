@@ -4,16 +4,17 @@ import type { Plugin } from "../../plugin";
 import logger from "../../log";
 import { getAvatarUrl, makeTextMessage, sendReplyMessage } from "../../util";
 import { isInWhiteList } from "../../whitelist";
+import { matchesCommand } from "../../command";
+import { loadEmergencyConfig, type EmergencyConfig } from "./config";
 
 interface EmergencyInvocation {
     payload: string;
 }
 
 const COMMAND_PREFIX = "/emergency";
-const EMERGENCY_WEBHOOK_BASE = "https://api.day.app/WG4jBZmpVtnHpWauHpBaJS";
 
 function acceptsCommand(text: string): boolean {
-    return text.trimStart().startsWith(COMMAND_PREFIX);
+    return matchesCommand(text, COMMAND_PREFIX, { allowOptions: true });
 }
 
 function parseInvocation(text: string): EmergencyInvocation | null {
@@ -25,10 +26,10 @@ function parseInvocation(text: string): EmergencyInvocation | null {
     return { payload };
 }
 
-function buildEmergencyWebhookUrl(sender_id: number, sender: string, content: string): string {
+function buildEmergencyWebhookUrl(webhookBase: string, sender_id: number, sender: string, content: string): string {
     const encodedSender = encodeURIComponent(sender);
     const encodedContent = encodeURIComponent(content);
-    const url = new URL(`${EMERGENCY_WEBHOOK_BASE}/${encodedSender}/${encodedContent}/`);
+    const url = new URL(`${webhookBase}/${encodedSender}/${encodedContent}/`);
     url.searchParams.set("group", 'Bot转发消息');
     url.searchParams.set("icon", getAvatarUrl(sender_id));
     return url.toString();
@@ -39,11 +40,23 @@ const notify = (async (body: MessageBody, data: TextMessageData) => {
     if (!invocation)
         return;
 
+    let config: EmergencyConfig | null;
+    try {
+        config = loadEmergencyConfig();
+    } catch (error) {
+        logger.error({ error }, "Invalid emergency notification configuration");
+        return;
+    }
+    if (!config || !config.allowedUserIds.has(body.sender.user_id)) {
+        return;
+    }
+
     if (!invocation.payload) {
         await sendReplyMessage(body, [
-            makeTextMessage("用法：/emergency [要推送的消息]\n\n用于有急事的时候找不在的 "),
-            { type: "at", data: { qq: "591752976" } },
-            makeTextMessage("。\n要是 spam 就杀了你。"),
+            makeTextMessage("用法：/emergency [要推送的消息]"),
+            ...(config.targetUserId
+                ? [makeTextMessage("\n\n用于有急事的时候联系 "), { type: "at", data: { qq: config.targetUserId } }]
+                : []),
         ]);
         return;
     }
@@ -53,7 +66,7 @@ const notify = (async (body: MessageBody, data: TextMessageData) => {
         const groupName = body.message_type === "group" ? isInWhiteList(body) : "私聊";
         const sender = `${senderName}@${groupName}`;
 
-        const url = buildEmergencyWebhookUrl(body.sender.user_id, sender, invocation.payload);
+        const url = buildEmergencyWebhookUrl(config.webhookBase, body.sender.user_id, sender, invocation.payload);
         const response = await botFetch(url, { method: "GET" });
 
         if (!response.ok) {

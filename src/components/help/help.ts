@@ -1,12 +1,12 @@
 import type { MessageBody, TextMessageData } from "../../model";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendReplyMessage } from "../../util";
+import { matchesCommand } from "../../command";
 
 const COMMAND_PREFIX = "/help";
 
 function acceptsCommand(text: string): boolean {
-    const trimmed = text.trimStart();
-    return trimmed === COMMAND_PREFIX || trimmed.startsWith(`${COMMAND_PREFIX} `);
+    return matchesCommand(text, COMMAND_PREFIX);
 }
 
 function buildHelpMessage(): string {

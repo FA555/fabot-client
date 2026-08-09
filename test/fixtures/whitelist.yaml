@@ -1,0 +1,10 @@
+private:
+  - name: test-admin
+    id: 1001
+    super: true
+  - name: test-user
+    id: 42
+
+group:
+  - name: test-group
+    id: 2

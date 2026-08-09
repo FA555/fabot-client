@@ -2,6 +2,7 @@ import type { MessageBody, TextMessageData } from "../../model";
 import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
 import { isInWhiteList, isInWhiteListById } from "../../whitelist";
 import type { Plugin } from "../../plugin";
+import { matchesCommand } from "../../command";
 
 interface EchoCommand {
     reply: boolean;
@@ -11,7 +12,7 @@ interface EchoCommand {
 const COMMAND_PREFIX = "/echo";
 
 const acceptsCommand = (text: string): boolean => {
-    return text.trimStart().startsWith(COMMAND_PREFIX);
+    return matchesCommand(text, COMMAND_PREFIX, { allowOptions: true });
 }
 
 const parseCommand = (text: string): EchoCommand | null => {

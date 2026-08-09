@@ -17,7 +17,8 @@ interface Whitelist {
     group: WhitelistGroupItem[],
 }
 
-const whitelist: Whitelist = parse(fs.readFileSync("config/whitelist.yaml", "utf8"));
+const whitelistPath = process.env.WHITELIST_PATH?.trim() || "config/whitelist.yaml";
+const whitelist: Whitelist = parse(fs.readFileSync(whitelistPath, "utf8"));
 
 export const isInWhiteList = (body: MessageBody): string | null => {
     const { message_type, group_id, user_id } = body;

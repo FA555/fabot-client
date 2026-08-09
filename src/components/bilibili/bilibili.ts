@@ -3,6 +3,7 @@ import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import logger from "../../log";
 import { makeTextMessage, sendReplyMessage } from "../../util";
+import { matchesCommand } from "../../command";
 
 interface BilibiliInvocation {
     query: string;
@@ -42,7 +43,7 @@ function buildHeaders(referer: string): HeadersInit {
 }
 
 function acceptsCommand(text: string): boolean {
-    return text.trimStart().startsWith(COMMAND_PREFIX);
+    return matchesCommand(text, COMMAND_PREFIX, { allowOptions: true });
 }
 
 function parseInvocation(text: string): BilibiliInvocation | null {

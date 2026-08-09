@@ -1,7 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 
 import type { MessageBody } from "../../model";
+import { botAxios } from "../../network";
 import audit, { canQueryAudit, getAuditSince, parseAuditCommand } from "./audit";
+
+const originalPost = botAxios.post;
 
 function makeBody(messageType: "private" | "group", userId: number): MessageBody {
     return {
@@ -20,9 +23,13 @@ function makeBody(messageType: "private" | "group", userId: number): MessageBody
     };
 }
 
+afterEach(() => {
+    botAxios.post = originalPost;
+});
+
 describe("audit command", () => {
     test("uses all history by default", () => {
-        const body = makeBody("private", 591752976);
+        const body = makeBody("private", 1001);
         expect(audit.acceptMessage("/audit", body)).toBe(true);
         expect(audit.acceptMessage("/auditing", body)).toBe(false);
         const command = parseAuditCommand("/audit");
@@ -35,7 +42,7 @@ describe("audit command", () => {
     });
 
     test("parses chained dot options in any order", () => {
-        const body = makeBody("private", 591752976);
+        const body = makeBody("private", 1001);
         expect(audit.acceptMessage("/audit.ai.time(1d)", body)).toBe(true);
         expect(parseAuditCommand("/audit.ai.time(2w)")).toEqual({
             report: "ai",
@@ -60,8 +67,21 @@ describe("audit command", () => {
     });
 
     test("allows only super administrators in private chats", () => {
-        expect(canQueryAudit(makeBody("private", 591752976))).toBe(true);
-        expect(canQueryAudit(makeBody("group", 591752976))).toBe(false);
+        expect(canQueryAudit(makeBody("private", 1001))).toBe(true);
+        expect(canQueryAudit(makeBody("group", 1001))).toBe(false);
         expect(canQueryAudit(makeBody("private", 42))).toBe(false);
+    });
+
+    test("silently ignores unauthorized and group queries", async () => {
+        let sends = 0;
+        botAxios.post = (async () => {
+            sends += 1;
+            throw new Error("unexpected send");
+        }) as typeof botAxios.post;
+
+        await audit(makeBody("private", 42), { text: "/audit" });
+        await audit(makeBody("group", 1001), { text: "/audit" });
+
+        expect(sends).toBe(0);
     });
 });

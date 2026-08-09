@@ -3,6 +3,7 @@ import type { MessageBody, TextMessageData } from "../../model";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendReplyMessage } from "../../util";
 import { isSuperAdmin } from "../../whitelist";
+import { matchesCommand } from "../../command";
 
 const COMMAND_PREFIX = "/audit";
 
@@ -22,10 +23,7 @@ export function canQueryAudit(body: MessageBody): boolean {
 }
 
 function acceptsCommand(text: string): boolean {
-    const trimmed = text.trimStart();
-    return trimmed === COMMAND_PREFIX
-        || trimmed.startsWith(`${COMMAND_PREFIX}.`)
-        || trimmed.startsWith(`${COMMAND_PREFIX} `);
+    return matchesCommand(text, COMMAND_PREFIX, { allowOptions: true });
 }
 
 function parseRange(value: string): { milliseconds: number; label: string } | null {

@@ -6,6 +6,7 @@ import { chmod, copyFile, mkdtemp, readdir, readFile, rm, writeFile } from "fs/p
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { makeTextMessage, sendReplyMessage } from "../../util";
+import { matchesCommand } from "../../command";
 
 type TypstMode = 'auto' | 'a4' | 'math' | 'code';
 
@@ -98,7 +99,7 @@ class Workspace {
 const COMMAND_PREFIX = "/typst";
 
 function acceptsCommand(text: string): boolean {
-    return text.trimStart().startsWith(COMMAND_PREFIX);
+    return matchesCommand(text, COMMAND_PREFIX, { allowOptions: true });
 }
 
 function parseInvocation(text: string): TypstInvocation | null {

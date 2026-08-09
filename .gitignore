@@ -173,8 +173,10 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
+*.swp
 
 # Project Specific
 config/
 nohup.out
 data/audit.sqlite*
+.docs/
