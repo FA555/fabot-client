@@ -68,6 +68,22 @@ export function createApplication(
     let server: AppServer | null = null;
     let started = false;
     let stopped = false;
+    let schedulerStarted = false;
+
+    const stop = async (): Promise<void> => {
+        if (stopped) {
+            return;
+        }
+        stopped = true;
+        if (schedulerStarted) {
+            scheduler.stop();
+            schedulerStarted = false;
+        }
+        await server?.stop(false);
+        server = null;
+        store.close();
+        started = false;
+    };
 
     return {
         fetch: httpApp.fetch,
@@ -79,24 +95,21 @@ export function createApplication(
                 throw new Error("Application cannot be restarted after it has stopped");
             }
 
-            const tasks = await loadTasks();
-            for (const task of tasks) {
-                scheduler.register(task);
+            try {
+                const tasks = await loadTasks();
+                for (const task of tasks) {
+                    scheduler.register(task);
+                }
+                scheduler.start();
+                schedulerStarted = true;
+                server = serve({ hostname: config.hostname, port: config.port, fetch: httpApp.fetch });
+                started = true;
+                await initializeLogin();
+            } catch (error) {
+                await stop();
+                throw error;
             }
-            scheduler.start();
-            server = serve({ hostname: config.hostname, port: config.port, fetch: httpApp.fetch });
-            started = true;
-            await initializeLogin();
         },
-        async stop(): Promise<void> {
-            if (stopped) {
-                return;
-            }
-            stopped = true;
-            scheduler.stop();
-            await server?.stop(false);
-            store.close();
-            server = null;
-        },
+        stop,
     };
 }

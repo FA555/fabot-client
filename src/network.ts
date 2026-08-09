@@ -17,7 +17,7 @@ interface BotFetchInit extends RequestInit {
     proxyMode?: ProxyMode;
 }
 
-interface BotAxiosConfig<D = any> extends AxiosRequestConfig<D> {
+interface BotAxiosConfig<D = unknown> extends AxiosRequestConfig<D> {
     proxyMode?: ProxyMode;
 }
 
@@ -29,7 +29,7 @@ export function botFetch(input: RequestInfo | URL, init: BotFetchInit = {}): Pro
     return fetch(input, proxy ? { ...fetchInit, proxy } : fetchInit);
 }
 
-async function request<T = any, R = AxiosResponse<T>, D = any>(
+async function request<T = unknown, R = AxiosResponse<T>, D = unknown>(
     config: BotAxiosConfig<D>,
     includeNapCatToken: boolean,
 ): Promise<R> {
@@ -49,28 +49,28 @@ async function request<T = any, R = AxiosResponse<T>, D = any>(
     return axios.request<T, R, D>(axiosConfig);
 }
 
-const napCatRequest = <T = any, R = AxiosResponse<T>, D = any>(config: BotAxiosConfig<D>): Promise<R> => {
+const napCatRequest = <T = unknown, R = AxiosResponse<T>, D = unknown>(config: BotAxiosConfig<D>): Promise<R> => {
     return request<T, R, D>(config, true);
 };
 
-const serviceRequest = <T = any, R = AxiosResponse<T>, D = any>(config: BotAxiosConfig<D>): Promise<R> => {
+const serviceRequest = <T = unknown, R = AxiosResponse<T>, D = unknown>(config: BotAxiosConfig<D>): Promise<R> => {
     return request<T, R, D>(config, false);
 };
 
 export const botAxios = Object.assign(napCatRequest, {
-    get: <T = any, R = AxiosResponse<T>, D = any>(url: string, config: BotAxiosConfig<D> = {}): Promise<R> => {
+    get: <T = unknown, R = AxiosResponse<T>, D = unknown>(url: string, config: BotAxiosConfig<D> = {}): Promise<R> => {
         return napCatRequest<T, R, D>({ ...config, method: "GET", url });
     },
-    post: <T = any, R = AxiosResponse<T>, D = any>(url: string, data?: D, config: BotAxiosConfig<D> = {}): Promise<R> => {
+    post: <T = unknown, R = AxiosResponse<T>, D = unknown>(url: string, data?: D, config: BotAxiosConfig<D> = {}): Promise<R> => {
         return napCatRequest<T, R, D>({ ...config, method: "POST", url, data });
     },
 });
 
 export const serviceAxios = Object.assign(serviceRequest, {
-    get: <T = any, R = AxiosResponse<T>, D = any>(url: string, config: BotAxiosConfig<D> = {}): Promise<R> => {
+    get: <T = unknown, R = AxiosResponse<T>, D = unknown>(url: string, config: BotAxiosConfig<D> = {}): Promise<R> => {
         return serviceRequest<T, R, D>({ ...config, method: "GET", url });
     },
-    post: <T = any, R = AxiosResponse<T>, D = any>(url: string, data?: D, config: BotAxiosConfig<D> = {}): Promise<R> => {
+    post: <T = unknown, R = AxiosResponse<T>, D = unknown>(url: string, data?: D, config: BotAxiosConfig<D> = {}): Promise<R> => {
         return serviceRequest<T, R, D>({ ...config, method: "POST", url, data });
     },
 });

@@ -1,8 +1,8 @@
 import { convert } from "html-to-text";
 import { execa } from "execa";
-import { chmod, copyFile, mkdtemp, readdir, readFile, rm, writeFile } from "fs/promises";
-import { join } from "path";
-import { fileURLToPath } from "url";
+import { chmod, copyFile, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import logger from "../../log";
 import { matchesCommand } from "../../command";
@@ -242,7 +242,6 @@ function formatDailyQuestionMarkdown(record: LeetcodeTodayRecord): string | null
 
     const questionId = question.questionFrontendId ? `${question.questionFrontendId}. ` : "";
     const title = question.translatedTitle || question.title || question.titleSlug;
-    const link = `https://leetcode.cn/problems/${question.titleSlug}/`;
     const tags = question.topicTags
         ?.map(tag => tag.translatedName || tag.name)
         .filter((tag): tag is string => typeof tag === "string" && tag.length > 0)

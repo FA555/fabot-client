@@ -1,6 +1,6 @@
 import { Mutex } from 'async-mutex';
 import { MAX_ATTEMPT_COUNT } from './config';
-import { Answer, Attempt } from './model';
+import { type Answer, Attempt } from './model';
 
 export enum State {
     Idle = 'Idle',

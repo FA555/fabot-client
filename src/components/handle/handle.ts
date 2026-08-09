@@ -3,7 +3,7 @@ import { getIdentifier, type Message, type MessageBody, type TextMessageData } f
 import { serviceAxios } from '../../network';
 import type { Plugin } from '../../plugin';
 import { isChineseCharacter, makeTextMessage, sendMessage, sendReplyMessage } from '../../util';
-import { State, StateManager, botStateManager } from './state';
+import { State, type StateManager, botStateManager } from './state';
 import type { AttemptOutcome } from './state';
 import { Answer, getEffectiveExplanation } from './model';
 import logger from '../../log';
@@ -20,6 +20,17 @@ interface HandleInvocation {
     hint: boolean;
     roll: boolean
     payload: string;
+}
+
+interface HandleStartResponse {
+    word: string;
+    pinyin: string;
+    explanation: string;
+}
+
+interface HandleAttemptResponse {
+    message?: string;
+    image_base64?: string;
 }
 
 const isInValidFormat = (word: string): boolean => {
@@ -108,7 +119,7 @@ const sendHelpMessage = async (body: MessageBody) => {
 };
 
 const getRandomAnswer = async (): Promise<Answer> => {
-    const response = await serviceAxios.post(`${HANDLE_SERVER_URL}/start`);
+    const response = await serviceAxios.post<HandleStartResponse>(`${HANDLE_SERVER_URL}/start`);
     return new Answer(response.data.word, response.data.pinyin, response.data.explanation);
 }
 
@@ -121,7 +132,7 @@ const getCurrentImageMessage = async (body: MessageBody, finished: boolean = fal
     if (finished && current.attempts.length === 0)
         return null;
 
-    const response = await serviceAxios.post(`${HANDLE_SERVER_URL}/attempt`, {
+    const response = await serviceAxios.post<HandleAttemptResponse>(`${HANDLE_SERVER_URL}/attempt`, {
         answer: current.answer,
         attempts: current.attempts,
         finished,
@@ -145,15 +156,6 @@ const drawCurrentImage = async (body: MessageBody) => {
     await sendReplyMessage(body, imgMsg);
 }
 
-const drawCurrentImageWithText = async (body: MessageBody, msg: Message) => {
-    const msgArray = [msg];
-    const imgMsg = await getCurrentImageMessage(body);
-    if (!imgMsg)
-        return;
-
-    msgArray.push(imgMsg);
-    await sendReplyMessage(body, msgArray);
-}
 
 const start = async (body: MessageBody, options?: { strict?: boolean, roll?: boolean }) => {
     const identifier = getIdentifier(body);
@@ -177,7 +179,7 @@ const start = async (body: MessageBody, options?: { strict?: boolean, roll?: boo
 
     logger.info(`[${identifier}] 开始 Handle${strict ? '（严格模式）' : ''}。答案：${answer}`);
 
-    let msg = [makeTextMessage(
+    const msg = [makeTextMessage(
         `Handle 开始，${strict ? "严格模式只接受发送四字成语猜测词语" : '发送四字词语猜测成语'}。\n`
         + `最多猜测 ${MAX_ATTEMPT_COUNT} 次。`
     )];
@@ -252,7 +254,10 @@ const handlePlugin = (async (body: MessageBody, data: TextMessageData) => {
                 return;
             }
 
-            const effectiveExplanation = getEffectiveExplanation(stateAll.answer!);
+            if (!stateAll.answer) {
+                throw new Error("Running game has no answer");
+            }
+            const effectiveExplanation = getEffectiveExplanation(stateAll.answer);
             await sendMessage(body, makeTextMessage(`成语释义：${effectiveExplanation}`));
             return;
         }

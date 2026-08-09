@@ -2,9 +2,9 @@ import type { Message, MessageBody, TextMessageData } from "../../model";
 import type { Plugin } from "../../plugin";
 
 import { execa } from "execa";
-import { chmod, copyFile, mkdtemp, readdir, readFile, rm, writeFile } from "fs/promises";
-import { join } from "path";
-import { fileURLToPath } from "url";
+import { chmod, copyFile, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { makeTextMessage, sendReplyMessage } from "../../util";
 import { matchesCommand } from "../../command";
 
@@ -157,7 +157,7 @@ async function getTypstVersion(binaryName: string): Promise<string> {
         const { stdout } = await execa(binaryName, ["--version"]);
         const versionNumber = stdout.trim().match(/\d+\.\d+\.\d+/)?.[0] || defaultVersion;
         const versionHash = stdout.trim().match(/[0-9a-f]{8}/)?.[0] || null;
-        return `${versionNumber}` + (versionHash ? ` (${versionHash})` : "");
+        return `${versionNumber}${versionHash ? ` (${versionHash})` : ""}`;
     } catch (error) {
         console.error("Failed to get Typst version:", error);
         return defaultVersion;

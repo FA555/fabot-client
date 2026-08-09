@@ -102,7 +102,7 @@ export async function handleMessage(
                 }
                 try {
                     await runWithAuditContext({ pluginName: registration.name }, () => (
-                        registration.plugin.observeMessage!(body, data)
+                        registration.plugin.observeMessage?.(body, data)
                     ));
                 } catch (error) {
                     logger.error({ error, plugin: registration.name, auditId }, "Plugin observer failed");

@@ -1,5 +1,5 @@
 import { Mutex } from "async-mutex";
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 
 import logger from "../../log";
 import type { MessageBody, TextMessageData } from "../../model";
@@ -150,7 +150,6 @@ function getLeadingBotMentionPrompt(text: string, body: MessageBody): string | n
 }
 
 function acceptsAiMessage(text: string, body: MessageBody): boolean {
-    return false;
     return acceptsCommand(text)
         || (body.message_type === "private" && text.trim().length > 0)
         || Boolean(getLeadingBotMentionPrompt(text, body));
@@ -380,7 +379,6 @@ function getSystemPrompt(): ChatMessage {
 }
 
 function buildHelpMessage(): string {
-    const models = Object.keys(MODEL_CONFIGS).join("、");
     return [
         "AI 对话插件",
         "",
@@ -391,8 +389,6 @@ function buildHelpMessage(): string {
         `${COMMAND_PREFIX}.reset`,
         `${COMMAND_PREFIX}.help`,
         "",
-        // `默认模型：${DEFAULT_MODEL}`,
-        // `可用模型：${models}`,
         "上下文：同一群聊共享，私聊按用户独立；群聊使用 /ai 或在消息开头 @bot 会触发回复，但未匹配其他命令的普通群聊文本会作为背景上下文。",
     ].join("\n");
 }

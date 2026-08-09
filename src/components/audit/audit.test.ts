@@ -38,7 +38,10 @@ describe("audit command", () => {
             rangeMs: null,
             rangeLabel: "全部历史",
         });
-        expect(getAuditSince(command!)).toBe(0);
+        if (!command) {
+            throw new Error("Expected /audit to parse");
+        }
+        expect(getAuditSince(command)).toBe(0);
     });
 
     test("parses chained dot options in any order", () => {
@@ -54,8 +57,11 @@ describe("audit command", () => {
             rangeMs: 7 * 24 * 60 * 60 * 1000,
             rangeLabel: "7d",
         });
-        expect(getAuditSince(parseAuditCommand("/audit.time(1d)")!, 2 * 24 * 60 * 60 * 1000))
-            .toBe(24 * 60 * 60 * 1000);
+        const oneDayCommand = parseAuditCommand("/audit.time(1d)");
+        if (!oneDayCommand) {
+            throw new Error("Expected /audit.time(1d) to parse");
+        }
+        expect(getAuditSince(oneDayCommand, 2 * 24 * 60 * 60 * 1000)).toBe(24 * 60 * 60 * 1000);
     });
 
     test("rejects old, unknown, duplicate, and conflicting options", () => {

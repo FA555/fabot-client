@@ -26,7 +26,7 @@ const parseByrbbsLink = (url: string): string | null => {
 
 const htmlToRawText = (htmlStr: string): string => {
     return convert(htmlStr, {
-        formatters: { customImage: (elem, walk, builder, formatOptions) => builder.addInline('[图片]') },
+        formatters: { customImage: (_elem, _walk, builder, _formatOptions) => builder.addInline('[图片]') },
         selectors: [
             { selector: 'img', format: 'customImage' },
             { selector: 'a[href^="/att/"]', format: 'skip' }, // 针对图片

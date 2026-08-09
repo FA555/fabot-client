@@ -46,4 +46,40 @@ describe("createApplication", () => {
             "store.close",
         ]);
     });
+
+    test("rolls back started resources when login initialization fails", async () => {
+        const events: string[] = [];
+        const application = createApplication(
+            { hostname: "127.0.0.1", port: 55550, webhookToken: null },
+            {
+                store: { close: () => { events.push("store.close"); } },
+                scheduler: {
+                    register: () => undefined,
+                    start: () => { events.push("scheduler.start"); },
+                    stop: () => { events.push("scheduler.stop"); },
+                },
+                plugins: [],
+                loadTasks: async () => [],
+                initializeLogin: async () => {
+                    events.push("login.init");
+                    throw new Error("login failed");
+                },
+                serve: () => {
+                    events.push("server.start");
+                    return { stop: async () => { events.push("server.stop"); } };
+                },
+            },
+        );
+
+        await expect(application.start()).rejects.toThrow("login failed");
+        expect(events).toEqual([
+            "scheduler.start",
+            "server.start",
+            "login.init",
+            "scheduler.stop",
+            "server.stop",
+            "store.close",
+        ]);
+        await expect(application.start()).rejects.toThrow("Application cannot be restarted");
+    });
 });

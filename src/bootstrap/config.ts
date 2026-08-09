@@ -10,7 +10,7 @@ function isLoopbackHostname(hostname: string): boolean {
         return true;
     }
     const match = normalized.match(/^127\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-    return Boolean(match && match.slice(1).every(part => Number(part) <= 255));
+    return Boolean(match?.slice(1).every(part => Number(part) <= 255));
 }
 
 export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {

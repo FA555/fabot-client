@@ -47,7 +47,7 @@ const notify = (async (body: MessageBody, data: TextMessageData) => {
         logger.error({ error }, "Invalid emergency notification configuration");
         return;
     }
-    if (!config || !config.allowedUserIds.has(body.sender.user_id)) {
+    if (!config?.allowedUserIds.has(body.sender.user_id)) {
         return;
     }
 

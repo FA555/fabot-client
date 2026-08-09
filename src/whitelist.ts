@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "node:fs";
 import { parse } from "yaml";
 import type { MessageBody } from "./model";
 
@@ -28,7 +28,7 @@ export const isInWhiteList = (body: MessageBody): string | null => {
     if (!type)
         return null;
 
-    for (let item of whitelist[type])
+    for (const item of whitelist[type])
         if (item.id === id)
             return item.name;
 
@@ -36,7 +36,7 @@ export const isInWhiteList = (body: MessageBody): string | null => {
 }
 
 export const isInWhiteListById = (type: "private" | "group", id: number): string | null => {
-    for (let item of whitelist[type])
+    for (const item of whitelist[type])
         if (item.id === id)
             return item.name;
 

@@ -1,6 +1,6 @@
 import type { MessageBody, TextMessageData } from "../../model";
 import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
-import { isInWhiteList, isInWhiteListById } from "../../whitelist";
+import { isInWhiteListById } from "../../whitelist";
 import type { Plugin } from "../../plugin";
 import { matchesCommand } from "../../command";
 
@@ -58,7 +58,7 @@ function getMsg(payload: string): string {
     if (trivial || countOf嘻 < 2)
         return "不听你的 嘻嘻";
 
-    return "不听你的 " + "嘻".repeat(countOf嘻 + 1);
+    return `不听你的 ${"嘻".repeat(countOf嘻 + 1)}`;
 }
 
 const echo = (async (body: MessageBody, data: TextMessageData) => {
