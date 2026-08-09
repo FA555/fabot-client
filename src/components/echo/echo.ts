@@ -1,6 +1,6 @@
 import type { MessageBody, TextMessageData } from "../../model";
 import { makeTextMessage, sendMessage, sendReplyMessage } from "../../util";
-import { isInWhiteListById } from "../../whitelist";
+import { isInWhiteListById } from "../../access-control";
 import type { Plugin } from "../../plugin";
 import { matchesCommand } from "../../command";
 

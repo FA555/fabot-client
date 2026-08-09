@@ -2,7 +2,7 @@ import { getAuditStore } from "../../audit";
 import type { MessageBody, TextMessageData } from "../../model";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendReplyMessage } from "../../util";
-import { isSuperAdmin } from "../../whitelist";
+import { isSuperAdmin } from "../../access-control";
 import { matchesCommand } from "../../command";
 
 const COMMAND_PREFIX = "/audit";

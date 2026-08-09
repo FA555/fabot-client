@@ -6,8 +6,7 @@ import logger from "./log";
 import { flattenMessage } from "./message-flattener";
 import type { MessageBody, TextMessageData } from "./model";
 import type { RegisteredPlugin } from "./plugin";
-import { allowAllPluginPolicy, type PluginPolicy } from "./plugin-policy";
-import { isInWhiteList } from "./whitelist";
+import { allowAllPluginPolicy, isInWhiteList, type PluginPolicy } from "./access-control";
 
 interface MessageHandlerDependencies {
     store?: AuditStore;

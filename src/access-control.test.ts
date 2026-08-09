@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
 import type { MessageBody } from "./model";
-import { compilePluginPolicy, loadPluginPolicy } from "./plugin-policy";
+import {
+    compilePluginPolicy,
+    getSuperAdmins,
+    isInWhiteList,
+    isSuperAdmin,
+    loadPluginPolicy,
+} from "./access-control";
 
 function makeBody(
     messageType: "private" | "group",
@@ -135,7 +141,7 @@ describe("compilePluginPolicy", () => {
         }, ["ai"])).toThrow("positive integer");
     });
 
-    test("loads a YAML policy file", () => {
+    test("loads identities and plugin policy from the same YAML file", () => {
         const pluginNames = [
             "audit",
             "help",
@@ -149,19 +155,15 @@ describe("compilePluginPolicy", () => {
             "leetcode",
             "ai",
         ];
-        const policy = loadPluginPolicy(pluginNames, "", "test/fixtures/plugin-policy.yaml");
+        const policy = loadPluginPolicy(pluginNames);
 
+        expect(isInWhiteList(makeBody("private", 1001, 1001))).toBe("test-admin");
+        expect(isInWhiteList(makeBody("group", 2, 42))).toBe("test-group");
+        expect(isSuperAdmin(1001)).toBe(true);
+        expect(getSuperAdmins()).toEqual([{ name: "test-admin", id: 1001 }]);
         expect(policy.isEnabled("ai", "invoke", makeBody("private", 42, 42))).toBe(true);
         expect(policy.isEnabled("ai", "observe", makeBody("private", 42, 42))).toBe(false);
         expect(policy.isEnabled("ai", "observe", makeBody("group", 2, 42))).toBe(true);
     });
 
-    test("fails for a configured missing file but preserves defaults when optional file is absent", () => {
-        expect(() => loadPluginPolicy(["ai"], "missing/required-plugin-policy.yaml"))
-            .toThrow("Configured plugin policy does not exist");
-
-        const policy = loadPluginPolicy(["ai"], "", "missing/optional-plugin-policy.yaml");
-        expect(policy.isEnabled("ai", "invoke", makeBody("private", 42, 42))).toBe(true);
-        expect(policy.isEnabled("ai", "observe", makeBody("group", 2, 42))).toBe(true);
-    });
 });

@@ -1,8 +1,0 @@
-version: 1
-plugins:
-  ai:
-    modes:
-      private:
-        observe: false
-      group:
-        observe: true

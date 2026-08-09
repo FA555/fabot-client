@@ -8,3 +8,13 @@ private:
 group:
   - name: test-group
     id: 2
+
+plugin_policy:
+  version: 1
+  plugins:
+    ai:
+      modes:
+        private:
+          observe: false
+        group:
+          observe: true

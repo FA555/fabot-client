@@ -6,7 +6,7 @@ import type { MessageBody, TextMessageData } from "../../model";
 import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import { makeTextMessage, sendReplyMessage } from "../../util";
-import { getSuperAdmins } from "../../whitelist";
+import { getSuperAdmins } from "../../access-control";
 import { getLoginNickname, getLoginUserId } from "../../login-info";
 import { getAuditContext, getAuditStore } from "../../audit";
 import { matchesCommand } from "../../command";

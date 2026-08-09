@@ -3,7 +3,7 @@ import { botFetch } from "../../network";
 import type { Plugin } from "../../plugin";
 import logger from "../../log";
 import { getAvatarUrl, makeTextMessage, sendReplyMessage } from "../../util";
-import { isInWhiteList } from "../../whitelist";
+import { isInWhiteList } from "../../access-control";
 import { matchesCommand } from "../../command";
 import { loadEmergencyConfig, type EmergencyConfig } from "./config";
 

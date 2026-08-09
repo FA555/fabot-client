@@ -6,7 +6,7 @@ import { initLoginInfo } from "../login-info";
 import { handleMessage } from "../message-handler";
 import type { MessageBody } from "../model";
 import type { RegisteredPlugin } from "../plugin";
-import { allowAllPluginPolicy, loadPluginPolicy, type PluginPolicy } from "../plugin-policy";
+import { allowAllPluginPolicy, loadPluginPolicy, type PluginPolicy } from "../access-control";
 import { plugins } from "../plugins";
 import type { AppConfig } from "./config";
 import { createHttpApp } from "./http-app";

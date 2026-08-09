@@ -1,15 +1,54 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
 
 import { parse } from "yaml";
 
 import type { MessageBody } from "./model";
-import { isSuperAdmin } from "./whitelist";
 
 export type PluginCapability = "invoke" | "observe";
 
 type ChatType = MessageBody["message_type"];
 type UnknownRecord = Record<string, unknown>;
+
+interface PrivateAccessEntry {
+    name: string;
+    id: number;
+    super?: boolean;
+}
+
+interface GroupAccessEntry {
+    name: string;
+    id: number;
+}
+
+interface AccessControlConfig {
+    private: PrivateAccessEntry[];
+    group: GroupAccessEntry[];
+    plugin_policy?: unknown;
+}
+
+const accessControlPath = process.env.WHITELIST_PATH?.trim() || "config/whitelist.yaml";
+const accessControlConfig = parse(readFileSync(accessControlPath, "utf8")) as AccessControlConfig;
+
+export const isInWhiteList = (body: MessageBody): string | null => {
+    const type = body.message_type === "group" ? "group" : "private";
+    const id = type === "group" ? body.group_id : body.user_id;
+    return accessControlConfig[type].find(item => item.id === id)?.name ?? null;
+};
+
+export const isInWhiteListById = (type: "private" | "group", id: number): string | null => {
+    return accessControlConfig[type].find(item => item.id === id)?.name ?? null;
+};
+
+export const isSuperAdmin = (id: number | undefined): boolean => {
+    return typeof id === "number"
+        && accessControlConfig.private.some(item => item.super && item.id === id);
+};
+
+export const getSuperAdmins = (): Array<{ name: string; id: number }> => {
+    return accessControlConfig.private
+        .filter(item => item.super)
+        .map(item => ({ name: item.name, id: item.id }));
+};
 
 interface CapabilitySettings {
     enabled?: boolean;
@@ -299,19 +338,9 @@ export const allowAllPluginPolicy: PluginPolicy = {
     isEnabled: () => true,
 };
 
-export function loadPluginPolicy(
-    registeredPluginNames: readonly string[],
-    configuredPath = process.env.PLUGIN_POLICY_PATH?.trim(),
-    defaultPath = "config/plugin-policy.yaml",
-): PluginPolicy {
-    const path = resolve(configuredPath || defaultPath);
-    if (!existsSync(path)) {
-        if (configuredPath) {
-            throw new Error(`Configured plugin policy does not exist: ${path}`);
-        }
+export function loadPluginPolicy(registeredPluginNames: readonly string[]): PluginPolicy {
+    if (accessControlConfig.plugin_policy === undefined) {
         return allowAllPluginPolicy;
     }
-
-    const rawConfig = parse(readFileSync(path, "utf8")) as unknown;
-    return compilePluginPolicy(rawConfig, registeredPluginNames);
+    return compilePluginPolicy(accessControlConfig.plugin_policy, registeredPluginNames);
 }
