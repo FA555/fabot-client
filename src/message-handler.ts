@@ -6,6 +6,7 @@ import logger from "./log";
 import { flattenMessage } from "./message-flattener";
 import type { MessageBody, TextMessageData } from "./model";
 import type { RegisteredPlugin } from "./plugin";
+import { allowAllPluginPolicy, type PluginPolicy } from "./plugin-policy";
 import { isInWhiteList } from "./whitelist";
 
 interface MessageHandlerDependencies {
@@ -13,6 +14,7 @@ interface MessageHandlerDependencies {
     flatten?: (body: MessageBody) => Promise<TextMessageData | null>;
     isWhitelisted?: (body: MessageBody) => string | null;
     getSelfId?: () => number | null;
+    pluginPolicy?: PluginPolicy;
 }
 
 function getChatId(body: MessageBody): number | undefined {
@@ -32,6 +34,7 @@ export async function handleMessage(
     const store = dependencies.store ?? getAuditStore();
     const flatten = dependencies.flatten ?? flattenMessage;
     const isWhitelisted = dependencies.isWhitelisted ?? isInWhiteList;
+    const pluginPolicy = dependencies.pluginPolicy ?? allowAllPluginPolicy;
     const senderId = body.user_id ?? body.sender?.user_id;
     const selfId = dependencies.getSelfId?.() ?? getLoginUserId() ?? body.self_id;
     if (typeof senderId === "number" && senderId === selfId) {
@@ -69,6 +72,9 @@ export async function handleMessage(
             }
 
             for (const registration of plugins) {
+                if (!pluginPolicy.isEnabled(registration.name, "invoke", body)) {
+                    continue;
+                }
                 if (!registration.plugin.acceptMessage(data.text, body)) {
                     continue;
                 }
@@ -97,7 +103,8 @@ export async function handleMessage(
             }
 
             for (const registration of plugins) {
-                if (!registration.plugin.observeMessage) {
+                if (!registration.plugin.observeMessage
+                    || !pluginPolicy.isEnabled(registration.name, "observe", body)) {
                     continue;
                 }
                 try {

@@ -6,6 +6,7 @@ import { initLoginInfo } from "../login-info";
 import { handleMessage } from "../message-handler";
 import type { MessageBody } from "../model";
 import type { RegisteredPlugin } from "../plugin";
+import { allowAllPluginPolicy, loadPluginPolicy, type PluginPolicy } from "../plugin-policy";
 import { plugins } from "../plugins";
 import type { AppConfig } from "./config";
 import { createHttpApp } from "./http-app";
@@ -35,6 +36,8 @@ export interface ApplicationDependencies {
     loadTasks?: () => Promise<CronJobInput[]>;
     initializeLogin?: () => Promise<void>;
     handleMessage?: (body: MessageBody, plugins: RegisteredPlugin[]) => Promise<void>;
+    pluginPolicy?: PluginPolicy;
+    loadPluginPolicy?: (registeredPluginNames: readonly string[]) => PluginPolicy;
     serve?: (options: ServerOptions) => AppServer;
 }
 
@@ -53,7 +56,11 @@ export function createApplication(
     const registeredPlugins = dependencies.plugins ?? plugins;
     const loadTasks = dependencies.loadTasks ?? loadConfiguredTasks;
     const initializeLogin = dependencies.initializeLogin ?? initLoginInfo;
-    const dispatchMessage = dependencies.handleMessage ?? handleMessage;
+    let pluginPolicy = dependencies.pluginPolicy ?? allowAllPluginPolicy;
+    const loadPolicy = dependencies.loadPluginPolicy ?? loadPluginPolicy;
+    const dispatchMessage = dependencies.handleMessage ?? ((body, pluginList) => (
+        handleMessage(body, pluginList, { pluginPolicy })
+    ));
     const serve = dependencies.serve ?? (options => Bun.serve({
         hostname: options.hostname,
         port: options.port,
@@ -96,6 +103,9 @@ export function createApplication(
             }
 
             try {
+                if (!dependencies.pluginPolicy) {
+                    pluginPolicy = loadPolicy(registeredPlugins.map(({ name }) => name));
+                }
                 const tasks = await loadTasks();
                 for (const task of tasks) {
                     scheduler.register(task);

@@ -147,4 +147,56 @@ describe("handleMessage", () => {
         await handleMessage(makeBody(8), plugins, makeDependencies(store));
         expect(observations).toBe(1);
     });
+
+    test("skips disabled invocations without changing plugin priority", async () => {
+        const store = new AuditStore(":memory:");
+        stores.push(store);
+        const calls: string[] = [];
+        let blockedAcceptanceChecks = 0;
+        const plugins: RegisteredPlugin[] = [
+            {
+                name: "blocked",
+                plugin: makePlugin(
+                    () => { calls.push("blocked"); },
+                    () => {
+                        blockedAcceptanceChecks += 1;
+                        return true;
+                    },
+                ),
+            },
+            { name: "enabled", plugin: makePlugin(() => { calls.push("enabled"); }) },
+        ];
+
+        await handleMessage(makeBody(9), plugins, {
+            ...makeDependencies(store),
+            pluginPolicy: {
+                isEnabled: (pluginName, capability) => pluginName !== "blocked" || capability !== "invoke",
+            },
+        });
+
+        expect(blockedAcceptanceChecks).toBe(0);
+        expect(calls).toEqual(["enabled"]);
+        expect(store.getPluginStats(0).map(({ pluginName }) => pluginName)).toEqual(["enabled"]);
+    });
+
+    test("independently disables plugin observation", async () => {
+        const store = new AuditStore(":memory:");
+        stores.push(store);
+        let observations = 0;
+        const observer = makePlugin(
+            () => undefined,
+            () => false,
+            () => { observations += 1; },
+        );
+
+        await handleMessage(makeBody(10), [{ name: "observer", plugin: observer }], {
+            ...makeDependencies(store),
+            pluginPolicy: {
+                isEnabled: (_pluginName, capability) => capability !== "observe",
+            },
+        });
+
+        expect(observations).toBe(0);
+        expect(store.getOverview(0).featureInvocations).toBe(0);
+    });
 });

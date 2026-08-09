@@ -15,6 +15,10 @@ describe("createApplication", () => {
                     stop: () => { events.push("scheduler.stop"); },
                 },
                 plugins: [],
+                loadPluginPolicy: names => {
+                    events.push(`policy.load:${names.join(",")}`);
+                    return { isEnabled: () => true };
+                },
                 loadTasks: async () => [{ name: "test", expression: "* * * * *", operation: () => undefined }],
                 initializeLogin: async () => { events.push("login.init"); },
                 serve: options => {
@@ -28,6 +32,7 @@ describe("createApplication", () => {
         await application.start();
         await application.start();
         expect(events).toEqual([
+            "policy.load:",
             "register:test",
             "scheduler.start",
             "serve:127.0.0.1:55550",
@@ -37,6 +42,7 @@ describe("createApplication", () => {
         await application.stop();
         await application.stop();
         expect(events).toEqual([
+            "policy.load:",
             "register:test",
             "scheduler.start",
             "serve:127.0.0.1:55550",
@@ -59,6 +65,7 @@ describe("createApplication", () => {
                     stop: () => { events.push("scheduler.stop"); },
                 },
                 plugins: [],
+                pluginPolicy: { isEnabled: () => true },
                 loadTasks: async () => [],
                 initializeLogin: async () => {
                     events.push("login.init");

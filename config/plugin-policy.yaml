@@ -1,0 +1,39 @@
+version: 1
+
+# 默认开启所有插件。enabled 同时控制命令处理和后台观察。
+defaults:
+  enabled: true
+
+# 插件名来自 src/plugins.ts。最简单的全局开关写法：
+# plugins:
+#   ai:
+#     enabled: false
+plugins:
+  ai:
+    enabled: true
+    modes:
+      private:
+        invoke: true
+        observe: false
+      group:
+        invoke: true
+        observe: true
+
+# 规则按顺序执行，后面的匹配规则覆盖前面的规则。
+#
+# 可用匹配条件：
+#   chat_type: private 或 group
+#   chat_ids: 私聊 QQ 号或群号
+#   actor_user_ids: 消息发送者 QQ 号
+#   super_admin: 是否为 whitelist.yaml 中的超级管理员
+#
+# 示例：关闭群 123456789 中的 AI：
+# rules:
+#   - id: disable-ai-in-group
+#     match:
+#       chat_type: group
+#       chat_ids: [123456789]
+#     plugins:
+#       ai:
+#         enabled: false
+rules: []
