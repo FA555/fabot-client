@@ -57,6 +57,30 @@ describe("compilePluginPolicy", () => {
         expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 42))).toBe(true);
     });
 
+    test("applies wildcard settings before plugin-specific overrides", () => {
+        const policy = compilePluginPolicy({
+            version: 1,
+            plugins: {
+                "*": { enabled: false },
+                ai: { enabled: true },
+            },
+            rules: [{
+                id: "only-handle-in-group",
+                match: { chat_type: "group", chat_ids: [200] },
+                plugins: {
+                    "*": { enabled: false },
+                    handle: { enabled: true },
+                },
+            }],
+        }, ["ai", "echo", "handle"]);
+
+        expect(policy.isEnabled("echo", "invoke", makeBody("private", 7, 7))).toBe(false);
+        expect(policy.isEnabled("ai", "invoke", makeBody("private", 7, 7))).toBe(true);
+        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7))).toBe(false);
+        expect(policy.isEnabled("ai", "observe", makeBody("group", 200, 7))).toBe(false);
+        expect(policy.isEnabled("handle", "invoke", makeBody("group", 200, 7))).toBe(true);
+    });
+
     test("matches super administrators without bypassing other selectors", () => {
         const policy = compilePluginPolicy({
             version: 1,
@@ -98,7 +122,7 @@ describe("compilePluginPolicy", () => {
         }, ["ai"])).toThrow("positive integer");
     });
 
-    test("loads the repository default policy", () => {
+    test("loads a YAML policy file", () => {
         const pluginNames = [
             "audit",
             "help",
@@ -112,7 +136,7 @@ describe("compilePluginPolicy", () => {
             "leetcode",
             "ai",
         ];
-        const policy = loadPluginPolicy(pluginNames, "", "config/plugin-policy.yaml");
+        const policy = loadPluginPolicy(pluginNames, "", "test/fixtures/plugin-policy.yaml");
 
         expect(policy.isEnabled("ai", "invoke", makeBody("private", 42, 42))).toBe(true);
         expect(policy.isEnabled("ai", "observe", makeBody("private", 42, 42))).toBe(false);

@@ -112,7 +112,7 @@ function parsePluginSettings(value: unknown, path: string): PluginSettings {
 }
 
 function assertKnownPlugin(pluginName: string, knownPlugins: ReadonlySet<string>, path: string): void {
-    if (!knownPlugins.has(pluginName)) {
+    if (pluginName !== "*" && !knownPlugins.has(pluginName)) {
         throw new Error(`Unknown plugin at ${path}: ${pluginName}`);
     }
 }
@@ -278,11 +278,15 @@ export function compilePluginPolicy(rawConfig: unknown, registeredPluginNames: r
     return {
         isEnabled(pluginName, capability, body): boolean {
             let enabled = applySettings(true, defaults, capability);
+            const wildcard = pluginSettings.get("*");
+            enabled = applySettings(enabled, wildcard, capability);
+            enabled = applySettings(enabled, wildcard?.modes?.[body.message_type], capability);
             const plugin = pluginSettings.get(pluginName);
             enabled = applySettings(enabled, plugin, capability);
             enabled = applySettings(enabled, plugin?.modes?.[body.message_type], capability);
             for (const rule of rules) {
                 if (matchesRule(rule.match, body)) {
+                    enabled = applySettings(enabled, rule.plugins.get("*"), capability);
                     enabled = applySettings(enabled, rule.plugins.get(pluginName), capability);
                 }
             }

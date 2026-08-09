@@ -68,7 +68,24 @@ rules:
         enabled: false
 ```
 
-规则从上到下执行，后匹配的规则覆盖先匹配的规则。`invoke` 控制插件是否响应消息，`observe` 控制插件是否在未响应消息时执行后台观察；`enabled` 同时控制两者。可用条件包括 `chat_type`、`chat_ids`、`actor_user_ids` 和 `super_admin`。配置中的未知插件、未知字段或非法 ID 会阻止服务启动，避免拼写错误被静默忽略。
+在指定群中只开启一个插件，可以先用 `"*"` 关闭全部插件，再开启目标插件：
+
+```yaml
+rules:
+  - id: only-handle-in-group
+    match:
+      chat_type: group
+      chat_ids: [123456789]
+    plugins:
+      "*":
+        enabled: false
+      handle:
+        enabled: true
+```
+
+同一配置块中，`"*"` 总是先应用，具体插件配置随后覆盖，不依赖 YAML 字段顺序。
+
+规则从上到下执行，后匹配的规则覆盖先匹配的规则。`invoke` 控制插件是否响应消息，`observe` 控制插件是否在未响应消息时执行后台观察；`enabled` 同时控制两者。可用条件包括 `chat_type`、`chat_ids`、`actor_user_ids` 和 `super_admin`。除 `"*"` 外的未知插件、未知字段或非法 ID 会阻止服务启动，避免拼写错误被静默忽略。
 
 审计数据默认永久保留，不会自动清理；`/audit` 默认查询全部历史。数据库文件权限会设为 `0600`。生产环境应使用 SQLite 在线备份工具，或停服后连同 WAL 文件一起备份；不要在服务运行时仅复制 `data/audit.sqlite`，也不要把数据库提交到 Git。
 
