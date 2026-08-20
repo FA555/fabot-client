@@ -56,11 +56,11 @@ describe("compilePluginPolicy", () => {
             ],
         }, ["ai", "echo"]);
 
-        expect(policy.isEnabled("echo", "invoke", makeBody("group", 200, 7))).toBe(true);
-        expect(policy.isEnabled("ai", "observe", makeBody("private", 42, 42))).toBe(false);
-        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7))).toBe(false);
-        expect(policy.isEnabled("ai", "observe", makeBody("group", 200, 42))).toBe(false);
-        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 42))).toBe(true);
+        expect(policy.isEnabled("echo", "invoke", makeBody("group", 200, 7), { whitelisted: true })).toBe(true);
+        expect(policy.isEnabled("ai", "observe", makeBody("private", 42, 42), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("ai", "observe", makeBody("group", 200, 42), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 42), { whitelisted: true })).toBe(true);
     });
 
     test("applies wildcard settings before plugin-specific overrides", () => {
@@ -80,11 +80,37 @@ describe("compilePluginPolicy", () => {
             }],
         }, ["ai", "echo", "handle"]);
 
-        expect(policy.isEnabled("echo", "invoke", makeBody("private", 7, 7))).toBe(false);
-        expect(policy.isEnabled("ai", "invoke", makeBody("private", 7, 7))).toBe(true);
-        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7))).toBe(false);
-        expect(policy.isEnabled("ai", "observe", makeBody("group", 200, 7))).toBe(false);
-        expect(policy.isEnabled("handle", "invoke", makeBody("group", 200, 7))).toBe(true);
+        expect(policy.isEnabled("echo", "invoke", makeBody("private", 7, 7), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("ai", "invoke", makeBody("private", 7, 7), { whitelisted: true })).toBe(true);
+        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("ai", "observe", makeBody("group", 200, 7), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("handle", "invoke", makeBody("group", 200, 7), { whitelisted: true })).toBe(true);
+    });
+
+    test("requires an explicit non-whitelisted rule for public private plugins", () => {
+        const policy = compilePluginPolicy({
+            version: 1,
+            defaults: { enabled: true },
+            plugins: { public: { enabled: true } },
+            rules: [
+                {
+                    id: "implicit-rule-does-not-open-access",
+                    match: { chat_type: "private" },
+                    plugins: { private: { invoke: true } },
+                },
+                {
+                    id: "explicit-public-private-access",
+                    match: { chat_type: "private", whitelisted: false },
+                    plugins: { public: { invoke: true } },
+                },
+            ],
+        }, ["private", "public"]);
+        const outsider = { whitelisted: false };
+        const body = makeBody("private", 7, 7);
+
+        expect(policy.isEnabled("private", "invoke", body, outsider)).toBe(false);
+        expect(policy.isEnabled("public", "observe", body, outsider)).toBe(false);
+        expect(policy.isEnabled("public", "invoke", body, outsider)).toBe(true);
     });
 
     test("treats empty ID selectors as matching no chats", () => {
@@ -97,7 +123,7 @@ describe("compilePluginPolicy", () => {
             }],
         }, ["ai"]);
 
-        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7))).toBe(true);
+        expect(policy.isEnabled("ai", "invoke", makeBody("group", 200, 7), { whitelisted: true })).toBe(true);
     });
 
     test("matches super administrators without bypassing other selectors", () => {
@@ -111,9 +137,9 @@ describe("compilePluginPolicy", () => {
             plugins: { audit: { invoke: false } },
         }, ["audit"]);
 
-        expect(policy.isEnabled("audit", "invoke", makeBody("private", 1001, 1001))).toBe(true);
-        expect(policy.isEnabled("audit", "invoke", makeBody("group", 2, 1001))).toBe(false);
-        expect(policy.isEnabled("audit", "invoke", makeBody("private", 42, 42))).toBe(false);
+        expect(policy.isEnabled("audit", "invoke", makeBody("private", 1001, 1001), { whitelisted: true })).toBe(true);
+        expect(policy.isEnabled("audit", "invoke", makeBody("group", 2, 1001), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("audit", "invoke", makeBody("private", 42, 42), { whitelisted: true })).toBe(false);
     });
 
     test("rejects unknown plugins, duplicate rules, and malformed selectors", () => {
@@ -161,9 +187,9 @@ describe("compilePluginPolicy", () => {
         expect(isInWhiteList(makeBody("group", 2, 42))).toBe("test-group");
         expect(isSuperAdmin(1001)).toBe(true);
         expect(getSuperAdmins()).toEqual([{ name: "test-admin", id: 1001 }]);
-        expect(policy.isEnabled("ai", "invoke", makeBody("private", 42, 42))).toBe(true);
-        expect(policy.isEnabled("ai", "observe", makeBody("private", 42, 42))).toBe(false);
-        expect(policy.isEnabled("ai", "observe", makeBody("group", 2, 42))).toBe(true);
+        expect(policy.isEnabled("ai", "invoke", makeBody("private", 42, 42), { whitelisted: true })).toBe(true);
+        expect(policy.isEnabled("ai", "observe", makeBody("private", 42, 42), { whitelisted: true })).toBe(false);
+        expect(policy.isEnabled("ai", "observe", makeBody("group", 2, 42), { whitelisted: true })).toBe(true);
     });
 
 });

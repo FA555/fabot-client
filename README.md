@@ -80,9 +80,20 @@ plugin_policy:
           enabled: false
         handle:
           enabled: true
+
+    # 非白名单私聊默认对所有插件不可见；必须显式声明才可开放。
+    - id: public-private-feature
+      match:
+        chat_type: private
+        whitelisted: false
+      plugins:
+        public:
+          invoke: true
 ```
 
-`private` 和 `group` 决定哪些用户或群可以进入消息处理流程；`plugin_policy` 决定消息进入后可以运行哪些插件。规则从上到下执行，后匹配的规则覆盖先匹配的规则。同一配置块中 `"*"` 先应用，具体插件随后覆盖。`invoke` 控制插件响应，`observe` 控制后台观察，`enabled` 同时控制两者。未知插件、未知字段或非法 ID 会阻止服务启动。
+`group` 是群聊入口白名单：不在其中的群消息直接丢弃。私聊消息都会进入消息处理和审计，但 `private` 列表之外的用户默认对所有插件不可见，插件的 `acceptMessage` 和 `observeMessage` 都不会被调用。要开放未来的公共私聊插件，规则必须显式匹配 `whitelisted: false` 并开启该插件；没有这个条件的普通规则不会意外向非白名单用户开放权限。白名单私聊用户默认拥有正常插件权限。
+
+`plugin_policy` 决定插件权限。规则从上到下执行，后匹配的规则覆盖先匹配的规则。同一配置块中 `"*"` 先应用，具体插件随后覆盖。`invoke` 控制插件响应，`observe` 控制后台观察，`enabled` 同时控制两者。可用匹配条件包括 `chat_type`、`chat_ids`、`actor_user_ids`、`super_admin` 和 `whitelisted`。未知插件、未知字段或非法 ID 会阻止服务启动。
 
 审计数据默认永久保留，不会自动清理；`/audit` 默认查询全部历史。数据库文件权限会设为 `0600`。生产环境应使用 SQLite 在线备份工具，或停服后连同 WAL 文件一起备份；不要在服务运行时仅复制 `data/audit.sqlite`，也不要把数据库提交到 Git。
 

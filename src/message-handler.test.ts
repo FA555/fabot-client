@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import { AuditStore } from "./audit/store";
+import { compilePluginPolicy } from "./access-control";
 import { handleMessage } from "./message-handler";
 import type { MessageBody } from "./model";
 import type { Plugin, RegisteredPlugin } from "./plugin";
@@ -20,6 +21,15 @@ function makeBody(messageId = 1): MessageBody {
         time: Math.floor(Date.now() / 1000),
         self_id: 100,
         post_type: "message",
+    };
+}
+
+function makeGroupBody(messageId: number): MessageBody {
+    return {
+        ...makeBody(messageId),
+        message_type: "group",
+        sub_type: "normal",
+        group_id: 2,
     };
 }
 
@@ -90,7 +100,7 @@ describe("handleMessage", () => {
         expect(overview.pluginFailures).toBe(1);
     });
 
-    test("ignores heartbeat, self, and non-whitelisted messages before auditing", async () => {
+    test("ignores heartbeat, self, and non-whitelisted group messages before auditing", async () => {
         const store = new AuditStore(":memory:");
         stores.push(store);
         let calls = 0;
@@ -105,13 +115,69 @@ describe("handleMessage", () => {
             user_id: 100,
             sender: { user_id: 100, nickname: "Bot", card: "" },
         }, plugins, makeDependencies(store));
-        await handleMessage(makeBody(5), plugins, {
+        await handleMessage(makeGroupBody(5), plugins, {
             ...makeDependencies(store),
             isWhitelisted: () => null,
         });
 
         expect(calls).toBe(0);
         expect(store.getOverview(0).inboundMessages).toBe(0);
+    });
+
+    test("receives non-whitelisted private messages without exposing them to plugins", async () => {
+        const store = new AuditStore(":memory:");
+        stores.push(store);
+        let flattened = 0;
+        let acceptanceChecks = 0;
+        let observations = 0;
+        const plugin = makePlugin(
+            () => undefined,
+            () => {
+                acceptanceChecks += 1;
+                return false;
+            },
+            () => { observations += 1; },
+        );
+
+        await handleMessage(makeBody(11), [{ name: "test", plugin }], {
+            ...makeDependencies(store),
+            flatten: async () => {
+                flattened += 1;
+                return { text: "test" };
+            },
+            isWhitelisted: () => null,
+        });
+
+        expect(flattened).toBe(1);
+        expect(acceptanceChecks).toBe(0);
+        expect(observations).toBe(0);
+        expect(store.getOverview(0).inboundMessages).toBe(1);
+    });
+
+    test("allows an explicitly public private plugin for non-whitelisted users", async () => {
+        const store = new AuditStore(":memory:");
+        stores.push(store);
+        let calls = 0;
+        const policy = compilePluginPolicy({
+            version: 1,
+            rules: [{
+                id: "public-private-feature",
+                match: { chat_type: "private", whitelisted: false },
+                plugins: { public: { invoke: true } },
+            }],
+        }, ["public"]);
+
+        await handleMessage(makeBody(12), [{
+            name: "public",
+            plugin: makePlugin(() => { calls += 1; }),
+        }], {
+            ...makeDependencies(store),
+            isWhitelisted: () => null,
+            pluginPolicy: policy,
+        });
+
+        expect(calls).toBe(1);
+        expect(store.getOverview(0).featureInvocations).toBe(1);
     });
 
     test("runs only the first matching plugin", async () => {

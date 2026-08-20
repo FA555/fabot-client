@@ -6,7 +6,7 @@ import { initLoginInfo } from "../login-info";
 import { handleMessage } from "../message-handler";
 import type { MessageBody } from "../model";
 import type { RegisteredPlugin } from "../plugin";
-import { allowAllPluginPolicy, loadPluginPolicy, type PluginPolicy } from "../access-control";
+import { defaultPluginPolicy, loadPluginPolicy, type PluginPolicy } from "../access-control";
 import { plugins } from "../plugins";
 import type { AppConfig } from "./config";
 import { createHttpApp } from "./http-app";
@@ -56,7 +56,7 @@ export function createApplication(
     const registeredPlugins = dependencies.plugins ?? plugins;
     const loadTasks = dependencies.loadTasks ?? loadConfiguredTasks;
     const initializeLogin = dependencies.initializeLogin ?? initLoginInfo;
-    let pluginPolicy = dependencies.pluginPolicy ?? allowAllPluginPolicy;
+    let pluginPolicy = dependencies.pluginPolicy ?? defaultPluginPolicy;
     const loadPolicy = dependencies.loadPluginPolicy ?? loadPluginPolicy;
     const dispatchMessage = dependencies.handleMessage ?? ((body, pluginList) => (
         handleMessage(body, pluginList, { pluginPolicy })

@@ -6,6 +6,10 @@ import type { MessageBody } from "./model";
 
 export type PluginCapability = "invoke" | "observe";
 
+export interface PluginAccessContext {
+    whitelisted: boolean;
+}
+
 type ChatType = MessageBody["message_type"];
 type UnknownRecord = Record<string, unknown>;
 
@@ -65,6 +69,7 @@ interface RuleMatch {
     chatIds?: ReadonlySet<number>;
     actorUserIds?: ReadonlySet<number>;
     superAdmin?: boolean;
+    whitelisted?: boolean;
 }
 
 interface CompiledRule {
@@ -73,7 +78,12 @@ interface CompiledRule {
 }
 
 export interface PluginPolicy {
-    isEnabled(pluginName: string, capability: PluginCapability, body: MessageBody): boolean;
+    isEnabled(
+        pluginName: string,
+        capability: PluginCapability,
+        body: MessageBody,
+        access: PluginAccessContext,
+    ): boolean;
 }
 
 const ROOT_KEYS: Record<string, true> = { version: true, defaults: true, plugins: true, rules: true };
@@ -86,6 +96,7 @@ const MATCH_KEYS: Record<string, true> = {
     chat_ids: true,
     actor_user_ids: true,
     super_admin: true,
+    whitelisted: true,
 };
 
 function asRecord(value: unknown, path: string): UnknownRecord {
@@ -213,6 +224,12 @@ function parseRuleMatch(value: unknown, path: string): RuleMatch {
         }
         result.superAdmin = record.super_admin;
     }
+    if (record.whitelisted !== undefined) {
+        if (typeof record.whitelisted !== "boolean") {
+            throw new Error(`${path}.whitelisted must be a boolean`);
+        }
+        result.whitelisted = record.whitelisted;
+    }
 
     return result;
 }
@@ -274,7 +291,13 @@ function applySettings(
     return settings[capability] ?? enabled;
 }
 
-function matchesRule(match: RuleMatch, body: MessageBody): boolean {
+function matchesRule(match: RuleMatch, body: MessageBody, access: PluginAccessContext): boolean {
+    if (!access.whitelisted && match.whitelisted !== false) {
+        return false;
+    }
+    if (match.whitelisted !== undefined && match.whitelisted !== access.whitelisted) {
+        return false;
+    }
     if (match.chatType !== undefined && match.chatType !== body.message_type) {
         return false;
     }
@@ -315,16 +338,19 @@ export function compilePluginPolicy(rawConfig: unknown, registeredPluginNames: r
     const rules = parseRules(root.rules, knownPlugins);
 
     return {
-        isEnabled(pluginName, capability, body): boolean {
-            let enabled = applySettings(true, defaults, capability);
-            const wildcard = pluginSettings.get("*");
-            enabled = applySettings(enabled, wildcard, capability);
-            enabled = applySettings(enabled, wildcard?.modes?.[body.message_type], capability);
-            const plugin = pluginSettings.get(pluginName);
-            enabled = applySettings(enabled, plugin, capability);
-            enabled = applySettings(enabled, plugin?.modes?.[body.message_type], capability);
+        isEnabled(pluginName, capability, body, access): boolean {
+            let enabled = false;
+            if (access.whitelisted) {
+                enabled = applySettings(true, defaults, capability);
+                const wildcard = pluginSettings.get("*");
+                enabled = applySettings(enabled, wildcard, capability);
+                enabled = applySettings(enabled, wildcard?.modes?.[body.message_type], capability);
+                const plugin = pluginSettings.get(pluginName);
+                enabled = applySettings(enabled, plugin, capability);
+                enabled = applySettings(enabled, plugin?.modes?.[body.message_type], capability);
+            }
             for (const rule of rules) {
-                if (matchesRule(rule.match, body)) {
+                if (matchesRule(rule.match, body, access)) {
                     enabled = applySettings(enabled, rule.plugins.get("*"), capability);
                     enabled = applySettings(enabled, rule.plugins.get(pluginName), capability);
                 }
@@ -334,13 +360,13 @@ export function compilePluginPolicy(rawConfig: unknown, registeredPluginNames: r
     };
 }
 
-export const allowAllPluginPolicy: PluginPolicy = {
-    isEnabled: () => true,
+export const defaultPluginPolicy: PluginPolicy = {
+    isEnabled: (_pluginName, _capability, _body, access) => access.whitelisted,
 };
 
 export function loadPluginPolicy(registeredPluginNames: readonly string[]): PluginPolicy {
     if (accessControlConfig.plugin_policy === undefined) {
-        return allowAllPluginPolicy;
+        return defaultPluginPolicy;
     }
     return compilePluginPolicy(accessControlConfig.plugin_policy, registeredPluginNames);
 }

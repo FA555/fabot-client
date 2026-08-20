@@ -6,7 +6,7 @@ import logger from "./log";
 import { flattenMessage } from "./message-flattener";
 import type { MessageBody, TextMessageData } from "./model";
 import type { RegisteredPlugin } from "./plugin";
-import { allowAllPluginPolicy, isInWhiteList, type PluginPolicy } from "./access-control";
+import { defaultPluginPolicy, isInWhiteList, type PluginPolicy } from "./access-control";
 
 interface MessageHandlerDependencies {
     store?: AuditStore;
@@ -33,13 +33,14 @@ export async function handleMessage(
     const store = dependencies.store ?? getAuditStore();
     const flatten = dependencies.flatten ?? flattenMessage;
     const isWhitelisted = dependencies.isWhitelisted ?? isInWhiteList;
-    const pluginPolicy = dependencies.pluginPolicy ?? allowAllPluginPolicy;
+    const pluginPolicy = dependencies.pluginPolicy ?? defaultPluginPolicy;
     const senderId = body.user_id ?? body.sender?.user_id;
     const selfId = dependencies.getSelfId?.() ?? getLoginUserId() ?? body.self_id;
     if (typeof senderId === "number" && senderId === selfId) {
         return;
     }
-    if (!isWhitelisted(body)) {
+    const whitelisted = Boolean(isWhitelisted(body));
+    if (body.message_type === "group" && !whitelisted) {
         return;
     }
 
@@ -71,7 +72,7 @@ export async function handleMessage(
             }
 
             for (const registration of plugins) {
-                if (!pluginPolicy.isEnabled(registration.name, "invoke", body)) {
+                if (!pluginPolicy.isEnabled(registration.name, "invoke", body, { whitelisted })) {
                     continue;
                 }
                 if (!registration.plugin.acceptMessage(data.text, body)) {
@@ -103,7 +104,7 @@ export async function handleMessage(
 
             for (const registration of plugins) {
                 if (!registration.plugin.observeMessage
-                    || !pluginPolicy.isEnabled(registration.name, "observe", body)) {
+                    || !pluginPolicy.isEnabled(registration.name, "observe", body, { whitelisted })) {
                     continue;
                 }
                 try {
